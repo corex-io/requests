@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"requests"
+	"github.com/corex-io/requests"
 )
 
 // func Test_Download(t *testing.T) {
