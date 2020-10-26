@@ -1,11 +1,13 @@
 package requests_test
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/corex-io/requests"
 )
@@ -98,4 +100,17 @@ func Test_PostForm2(t *testing.T) {
 	}
 	resp := requests.WarpResponse(res)
 	t.Log(resp.Text())
+}
+
+func Test_Race(t *testing.T) {
+	opts := requests.Options{}
+	ctx := context.Background()
+	t.Logf("%#v", opts)
+	sess := requests.New(requests.URL("http://httpbin.org/post")) //, requests.Auth("user", "123456"))
+	for i := 0; i < 10; i++ {
+		go func() {
+			sess.DoRequest(ctx, requests.MethodPost, requests.Body(`{"a":"b"}`), requests.Params(map[string]interface{}{"1": "2"}))
+		}()
+	}
+	time.Sleep(3 * time.Second)
 }

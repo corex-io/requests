@@ -12,30 +12,34 @@ import (
 )
 
 // Request request
-func Request(opt Options, opts ...Option) (*http.Request, error) {
-	for _, o := range opts {
-		o(&opt)
-	}
+func Request(opt Options) (*http.Request, error) {
 
 	var reader io.Reader
 	switch {
+	case opt.body != nil:
+		switch v := opt.body.(type) {
+		case []byte:
+			reader = bytes.NewReader(v)
+		case string:
+			reader = bytes.NewReader([]byte(v))
+		default:
+			b, err := json.Marshal(opt.body)
+			if err != nil {
+				return nil, err
+			}
+			reader = bytes.NewReader(b)
+		}
 	case opt.reader != nil:
 		reader = opt.reader
-	case opt.body != nil:
-		b, err := json.Marshal(opt.body)
-		if err != nil {
-			return nil, err
-		}
-		reader = bytes.NewReader(b)
-	case opt.Form != nil:
+	case len(opt.Form) != 0:
 		reader = strings.NewReader(opt.Form.Encode())
 	}
 
-	req, err := http.NewRequest(opt.Method, opt.URL+path.Join(opt.Path...), reader)
+	req, err := http.NewRequest(opt.Method, opt.URL, reader)
 	if err != nil {
 		return nil, err
 	}
-
+	req.URL.Path = path.Join(req.URL.Path, path.Join(opt.Path...))
 	for k, v := range opt.Params {
 		if req.URL.RawQuery != "" {
 			req.URL.RawQuery += "&"

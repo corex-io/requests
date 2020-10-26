@@ -2,6 +2,7 @@ package requests
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"
@@ -9,18 +10,18 @@ import (
 
 // Options request
 type Options struct {
-	Method  string
-	URL     string
-	Path    []string
-	Params  map[string]interface{}
-	Headers map[string]string
-	Cookies map[string]string
+	Method  string                 `json:"method"`
+	URL     string                 `json:"url"`
+	Path    []string               `json:"path"`
+	Params  map[string]interface{} `json:"params"`
+	Headers map[string]string      `json:"headers"`
+	Cookies map[string]string      `json:"cookies"`
 	body    interface{}
 	reader  io.Reader
 	Form    url.Values
-	Timeout int
-	Retry   int
-	Trace   bool
+	Timeout int  `json:"timeout"`
+	Retry   int  `json:"retry"`
+	Trace   bool `json:"trace"`
 }
 
 // Option func
@@ -40,6 +41,19 @@ func newOptions(opts ...Option) Options {
 	}
 	return opt
 }
+
+func warpOptions(opt Options, opts ...Option) Options {
+	for _, o := range opts {
+		o(&opt)
+	}
+	return opt
+}
+
+// Method http method
+var (
+	MethodGet  = Method("GET")
+	MethodPost = Method("POST")
+)
 
 // Method set method
 func Method(method string) Option {
@@ -191,4 +205,13 @@ func (opt *Options) MergeIn(o Options) {
 // Request request
 func (opt *Options) Request() (*http.Request, error) {
 	return Request(*opt)
+}
+
+// Load config
+func (opt *Options) Load(v interface{}) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, opt)
 }

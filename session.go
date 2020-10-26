@@ -12,9 +12,11 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptrace"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/net/proxy"
@@ -32,10 +34,11 @@ var (
 type Session struct {
 	*http.Transport
 	*http.Client
-	opts    Options
-	optfunc []Option
+	opts Options
+	// optFunc []Option
 	LogFunc func(string, ...interface{})
 	errs    chan error
+	wg      *sync.Mutex
 }
 
 // New new session
@@ -62,14 +65,27 @@ func New(opts ...Option) *Session {
 			Transport: tr,
 			Jar:       jar,
 		},
-		opts:    options,
-		optfunc: opts,
+		opts: options,
+		// optFunc: opts,
 		LogFunc: func(format string, v ...interface{}) {
 			fmt.Fprintf(os.Stderr, format+"\n", v...)
 		},
 		errs: make(chan error),
+		wg:   new(sync.Mutex),
 	}
 	return sess
+}
+
+// Init init
+func (sess *Session) Init(opts ...Option) {
+	for _, o := range opts {
+		o(&sess.opts)
+	}
+}
+
+// Load config
+func (sess *Session) Load(v interface{}) error {
+	return sess.opts.Load(v)
 }
 
 // Proxy set proxy addr
@@ -118,25 +134,25 @@ func (sess *Session) SetKeepAlives(keepAlives bool) *Session {
 }
 
 // DoRequest send a request and return a response
-func (sess *Session) DoRequest(ctx context.Context, opts ...Option) (*Response, error) {
+func (sess Session) DoRequest(ctx context.Context, opts ...Option) (*Response, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	sess.wg.Lock()
 
-	options := newOptions(sess.optfunc...)
-
+	options := sess.opts
 	for _, o := range opts {
 		o(&options)
 	}
 
-	var req *http.Request
+	req, err := Request(options)
+	defer sess.wg.Unlock()
+	if err != nil {
+		return nil, err
+	}
 	var resp *http.Response
-	var err error
 	for i := 0; i <= options.Retry; i++ {
-		req, err = Request(options)
-		if err != nil {
-			return nil, err
-		}
+
 		if ctx != nil {
 			req = req.WithContext(ctx) // !!! WithContext returns a shallow copy of r with its context changed to ctx
 		}
@@ -264,6 +280,8 @@ func (sess *Session) Uploadmultipart(url, file string, fields map[string]string)
 }
 
 // DebugTrace trace a request
+// ** BUG ** 显示URI中的‘/’参数会被%转义, 字符串%有特殊含义. 正确输入为:namespace=aws/ec2 实际输出为: namespace=aws%!F(MISSING)ec2
+// 不影响使用, 展示问题
 func (sess *Session) DebugTrace(req *http.Request) (*http.Response, error) {
 	trace := &httptrace.ClientTrace{
 		GetConn: func(hostPort string) {
@@ -309,7 +327,7 @@ func (sess *Session) DebugTrace(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	respLog, err := WarpResponse(resp).Dump()
+	respLog, err := httputil.DumpResponse(resp, true)
 	if err != nil {
 		return nil, err
 	}
@@ -318,11 +336,16 @@ func (sess *Session) DebugTrace(req *http.Request) (*http.Response, error) {
 }
 
 func show(b []byte, prompt string) string {
+	var maxTruncate = 9999
 	var buf bytes.Buffer
 	for _, line := range bytes.Split(b, []byte("\n")) {
 		buf.Write([]byte(prompt))
 		buf.Write(line)
 		buf.WriteString("\n")
 	}
-	return buf.String()
+	str := buf.String()
+	if len(str) > maxTruncate {
+		return fmt.Sprintf("%s...[Len=%d, Truncated]", str[:maxTruncate], len(str))
+	}
+	return str
 }

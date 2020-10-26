@@ -1,5 +1,5 @@
 module github.com/corex-io/requests
 
-go 1.13
+go 1.15
 
-require golang.org/x/net v0.0.0-20191028085509-fe3aa8a45271
+require golang.org/x/net v0.0.0-20201016165138-7b1cca2348c0
