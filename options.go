@@ -22,6 +22,7 @@ type Options struct {
 	Timeout int  `json:"timeout"`
 	Retry   int  `json:"retry"`
 	Trace   bool `json:"trace"`
+	Verify  bool `json:"verify"`
 }
 
 // Option func
@@ -171,6 +172,13 @@ func Timeout(timeout int) Option {
 func Trace(trace bool) Option {
 	return func(o *Options) {
 		o.Trace = trace
+	}
+}
+
+// Verify verify
+func Verify(verify bool) Option {
+	return func(o *Options) {
+		o.Verify = verify
 	}
 }
 

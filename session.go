@@ -43,6 +43,9 @@ type Session struct {
 
 // New new session
 func New(opts ...Option) *Session {
+
+	options := newOptions(opts...)
+
 	tr := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -55,9 +58,12 @@ func New(opts ...Option) *Session {
 		// ResponseHeaderTimeout: 60 * time.Second, // 限制读取response header的时间
 		DisableCompression: true,
 		DisableKeepAlives:  false,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: !options.Verify,
+		},
 	}
 	jar, _ := cookiejar.New(nil)
-	options := newOptions(opts...)
+
 	sess := &Session{
 		Transport: tr,
 		Client: &http.Client{
