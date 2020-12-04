@@ -152,7 +152,7 @@ func (sess Session) DoRequest(ctx context.Context, opts ...Option) (*Response, e
 	}
 
 	req, err := Request(options)
-	defer sess.wg.Unlock()
+	sess.wg.Unlock()
 	if err != nil {
 		return nil, err
 	}

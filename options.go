@@ -36,6 +36,7 @@ func newOptions(opts ...Option) Options {
 		Headers: make(map[string]string),
 		Cookies: make(map[string]string),
 		Form:    make(url.Values),
+		Timeout: 30000, // 30s
 	}
 	for _, o := range opts {
 		o(&opt)
