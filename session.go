@@ -67,7 +67,7 @@ func New(opts ...Option) *Session {
 	sess := &Session{
 		Transport: tr,
 		Client: &http.Client{
-			Timeout:   10 * time.Second,
+			Timeout:   time.Duration(options.Timeout) * time.Millisecond,
 			Transport: tr,
 			Jar:       jar,
 		},

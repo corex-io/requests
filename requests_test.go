@@ -31,7 +31,9 @@ func Test_Get(t *testing.T) {
 		requests.Retry(3),
 		requests.Header("a", "b"),
 		requests.Cookie("username", "golang"),
-		requests.Auth("user", "123456"))
+		requests.Auth("user", "123456"),
+		requests.Timeout(1),
+	)
 
 	// req.SetParam("uid", 1).SetCookie("username", "000000")
 	resp, err := sess.DoRequest(nil, requests.Method("GET"), requests.URL("http://httpbin.org/get"))

@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"path"
 	"strings"
 )
 
@@ -39,7 +38,12 @@ func Request(opt Options) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.URL.Path = path.Join(req.URL.Path, path.Join(opt.Path...))
+
+	// req.URL.Path = path.Join(req.URL.Path, path.Join(opt.Path...))
+	for _, path := range opt.Path {
+		req.URL.Path += path
+	}
+
 	for k, v := range opt.Params {
 		if req.URL.RawQuery != "" {
 			req.URL.RawQuery += "&"

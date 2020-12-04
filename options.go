@@ -161,7 +161,7 @@ func Retry(retry int) Option {
 	}
 }
 
-// Timeout timeout
+// Timeout timeout, Millisecond 毫秒
 func Timeout(timeout int) Option {
 	return func(o *Options) {
 		o.Timeout = timeout
