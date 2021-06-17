@@ -1,4 +1,4 @@
-package requests_test
+package requests
 
 import (
 	"context"
@@ -8,35 +8,33 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/corex-io/requests"
 )
 
 // func Test_Download(t *testing.T) {
 // 	t.Log("Testing Download")
-// 	err := requests.DownloadFile("https://github.com/prometheus/prometheus/releases/download/v2.12.0/prometheus-2.12.0.linux-amd64.tar.gz", true)
+// 	err := DownloadFile("https://github.com/prometheus/prometheus/releases/download/v2.12.0/prometheus-2.12.0.linux-amd64.tar.gz", true)
 // 	t.Log(err)
 // }
 
 func Test_Basic(t *testing.T) {
-	resp, _ := requests.Get("http://httpbin.org/get")
+	resp, _ := Get("http://httpbin.org/get")
 	t.Log(resp.Text())
-	resp, _ = requests.Post("http://httpbin.org/post", "application/json", strings.NewReader(`{"a": "b"}`))
+	resp, _ = Post("http://httpbin.org/post", "application/json", strings.NewReader(`{"a": "b"}`))
 	t.Log(resp.Text())
 }
 
 func Test_Get(t *testing.T) {
 	t.Log("Testing get request")
-	sess := requests.New(
-		requests.Retry(3),
-		requests.Header("a", "b"),
-		requests.Cookie("username", "golang"),
-		requests.Auth("user", "123456"),
-		requests.Timeout(1),
+	sess := New(
+		Retry(3),
+		Header("a", "b"),
+		Cookie("username", "golang"),
+		BasicAuth("user", "123456"),
+		Timeout(1),
 	)
 
 	// req.SetParam("uid", 1).SetCookie("username", "000000")
-	resp, err := sess.DoRequest(nil, requests.Method("GET"), requests.URL("http://httpbin.org/get"))
+	resp, err := sess.DoRequest(context.Background(), Method("GET"), URL("http://httpbin.org/get"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,42 +44,43 @@ func Test_Get(t *testing.T) {
 
 func Test_Post(t *testing.T) {
 	t.Log("Testing get request")
-	sess := requests.New(requests.Auth("user", "123456"))
-	resp, err := sess.DoRequest(nil,
-		requests.Method("POST"),
-		requests.URL("http://httpbin.org/post"),
-		requests.Params(map[string]interface{}{
+	sess := New(BasicAuth("user", "123456"))
+	resp, err := sess.DoRequest(context.Background(),
+		Method("POST"),
+		URL("http://httpbin.org/post"),
+		Params(map[string]interface{}{
 			"a": "b",
 			"c": 3,
 			"d": []int{1, 2, 3},
 		}),
-		requests.Body(`{"body":"QWER"}`),
-		requests.Retry(3),
-		requests.Header("hello", "world"),
-		requests.Trace(true),
+		Body(`{"body":"QWER"}`),
+		Retry(3),
+		Header("hello", "world"),
+		Trace(true),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(resp.StatusCode, err, resp.Response.ContentLength, resp.Request.ContentLength)
 	t.Log(resp.Text())
+	t.Log(resp.HTTPString(time.Now()))
 }
 
 func Test_FormPost(t *testing.T) {
 	t.Log("Testing get request")
 
-	sess := requests.New()
-	resp, err := sess.DoRequest(nil,
-		requests.Method("POST"),
-		requests.URL("http://httpbin.org/post"),
-		requests.Retry(3),
-		requests.Form("name", "12.com"),
-		requests.Params(map[string]interface{}{
+	sess := New()
+	resp, err := sess.DoRequest(context.Background(),
+		Method("POST"),
+		URL("http://httpbin.org/post"),
+		Retry(3),
+		Form("name", "12.com"),
+		Params(map[string]interface{}{
 			"a": "b",
 			"c": 3,
 			"d": []int{1, 2, 3},
 		}),
-		requests.Trace(true),
+		Trace(true),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -100,18 +99,18 @@ func Test_PostForm2(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	resp := requests.WarpResponse(res)
+	resp := WarpResponse(res)
 	t.Log(resp.Text())
 }
 
 func Test_Race(t *testing.T) {
-	opts := requests.Options{}
+	opts := Options{}
 	ctx := context.Background()
 	t.Logf("%#v", opts)
-	sess := requests.New(requests.URL("http://httpbin.org/post")) //, requests.Auth("user", "123456"))
+	sess := New(URL("http://httpbin.org/post")) //, Auth("user", "123456"))
 	for i := 0; i < 10; i++ {
 		go func() {
-			sess.DoRequest(ctx, requests.MethodPost, requests.Body(`{"a":"b"}`), requests.Params(map[string]interface{}{"1": "2"}))
+			sess.DoRequest(ctx, MethodPost, Body(`{"a":"b"}`), Params(map[string]interface{}{"1": "2"})) // nolint: errcheck
 		}()
 	}
 	time.Sleep(3 * time.Second)

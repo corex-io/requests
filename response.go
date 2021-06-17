@@ -6,13 +6,24 @@ import (
 	"net/http/httputil"
 	"os"
 	"sync"
+	"time"
 
 	"encoding/json"
 )
 
+// Stats stats
+type Stats struct {
+	StartAt string          `json:"start_at"`
+	Cost    int64           `json:"cost"`
+	Method  string          `json:"method"`
+	URL     string          `json:"url"`
+	Body    json.RawMessage `json:"body"`
+	Resp    json.RawMessage `json:"resp"`
+}
+
 // Response wrap std response
 type Response struct {
-	*http.Request
+	// *http.Request
 	*http.Response
 	once *sync.Once
 	body *bytes.Buffer
@@ -42,14 +53,29 @@ func (resp *Response) getBody() {
 }
 
 // WarpResponse warp response
-func WarpResponse(resp *http.Response, req ...*http.Request) *Response {
+func WarpResponse(resp *http.Response) *Response {
 	resp2 := newResponse()
 	resp2.Response = resp
-	if len(req) != 0 {
-		resp2.Request = req[0]
-	}
 	resp2.getBody()
 	return resp2
+}
+
+// HTTPString httpstring
+func (resp Response) HTTPString(startAt time.Time) Stats {
+	body, _ := resp.Response.Request.GetBody()
+
+	var buf bytes.Buffer
+	_, _ = buf.ReadFrom(body)
+
+	stats := Stats{
+		StartAt: startAt.Format("2006-01-02 15:04:05.000"),
+		Cost:    time.Since(startAt).Milliseconds(),
+		Method:  resp.Response.Request.Method,
+		URL:     resp.Response.Request.URL.String(),
+		Body:    buf.Bytes(),
+		Resp:    resp.body.Bytes(),
+	}
+	return stats
 }
 
 func (resp Response) String() string {
@@ -71,6 +97,10 @@ func (resp *Response) StdLib() *http.Response {
 // Text parse parse to string
 func (resp *Response) Text() string {
 	return resp.body.String()
+}
+
+func (resp *Response) Bytes() []byte {
+	return resp.body.Bytes()
 }
 
 // Download parse response to a file

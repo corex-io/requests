@@ -149,8 +149,8 @@ func Cookies(kv map[string]string) Option {
 
 }
 
-// Auth base auth
-func Auth(user, pass string) Option {
+// BasicAuth base auth
+func BasicAuth(user, pass string) Option {
 	return Header("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(user+":"+pass)))
 
 }
@@ -206,7 +206,7 @@ func (opt *Options) MergeIn(o Options) {
 	if opt.Timeout == 0 {
 		opt.Timeout = o.Timeout
 	}
-	if opt.Trace == false {
+	if !opt.Trace {
 		opt.Trace = o.Trace
 	}
 }

@@ -17,6 +17,8 @@ func Request(opt Options) (*http.Request, error) {
 	switch {
 	case opt.body != nil:
 		switch v := opt.body.(type) {
+		case io.Reader:
+			reader = opt.body.(io.Reader)
 		case []byte:
 			reader = bytes.NewReader(v)
 		case string:

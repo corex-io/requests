@@ -174,12 +174,12 @@ func (sess Session) DoRequest(ctx context.Context, opts ...Option) (*Response, e
 			sess.LogFunc("retry[%d/%d], err=%v", i, options.Retry, err)
 		}
 	}
-	return WarpResponse(resp, req), err
+	return WarpResponse(resp), err
 }
 
 // Do http request
 func (sess *Session) Do(method, url, contentType string, body io.Reader) (*Response, error) {
-	return sess.DoRequest(nil, Method(method), URL(url), Header("Content-Type", contentType), Reader(body))
+	return sess.DoRequest(context.Background(), Method(method), URL(url), Header("Content-Type", contentType), Reader(body))
 }
 
 // DoWithContext http request
@@ -189,12 +189,12 @@ func (sess *Session) DoWithContext(ctx context.Context, method, url, contentType
 
 // Get send get request
 func (sess *Session) Get(url string) (*Response, error) {
-	return sess.DoRequest(nil, Method("GET"), URL(url))
+	return sess.DoRequest(context.Background(), Method("GET"), URL(url))
 }
 
 // Head send head request
 func (sess *Session) Head(url string) (*Response, error) {
-	return sess.DoRequest(nil, Method("HEAD"), URL(url))
+	return sess.DoRequest(context.Background(), Method("HEAD"), URL(url))
 }
 
 // GetWithContext http request
