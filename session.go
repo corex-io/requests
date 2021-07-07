@@ -34,7 +34,7 @@ var (
 type Session struct {
 	*http.Transport
 	*http.Client
-	opts Options
+	options Options
 	// optFunc []Option
 	LogFunc func(string, ...interface{})
 	errs    chan error
@@ -71,7 +71,7 @@ func New(opts ...Option) *Session {
 			Transport: tr,
 			Jar:       jar,
 		},
-		opts: options,
+		options: options,
 		// optFunc: opts,
 		LogFunc: func(format string, v ...interface{}) {
 			fmt.Fprintf(os.Stderr, format+"\n", v...)
@@ -79,19 +79,20 @@ func New(opts ...Option) *Session {
 		errs: make(chan error),
 		wg:   new(sync.Mutex),
 	}
+
 	return sess
 }
 
 // Init init
 func (sess *Session) Init(opts ...Option) {
 	for _, o := range opts {
-		o(&sess.opts)
+		o(&sess.options)
 	}
 }
 
 // Load config
 func (sess *Session) Load(v interface{}) error {
-	return sess.opts.Load(v)
+	return sess.options.Load(v)
 }
 
 // Proxy set proxy addr
@@ -146,7 +147,11 @@ func (sess Session) DoRequest(ctx context.Context, opts ...Option) (*Response, e
 	}
 	sess.wg.Lock()
 
-	options := sess.opts
+	options, err := sess.options.Copy()
+	if err != nil {
+		return nil, err
+	}
+
 	for _, o := range opts {
 		o(&options)
 	}
@@ -156,6 +161,7 @@ func (sess Session) DoRequest(ctx context.Context, opts ...Option) (*Response, e
 	if err != nil {
 		return nil, err
 	}
+
 	var resp *http.Response
 	for i := 0; i <= options.Retry; i++ {
 

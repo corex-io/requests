@@ -99,6 +99,7 @@ func (resp *Response) Text() string {
 	return resp.body.String()
 }
 
+// Bytes bytes
 func (resp *Response) Bytes() []byte {
 	return resp.body.Bytes()
 }

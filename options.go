@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/corex-io/codec"
 )
 
 // Options request
@@ -181,6 +183,13 @@ func Verify(verify bool) Option {
 	return func(o *Options) {
 		o.Verify = verify
 	}
+}
+
+// Copy copy
+func (opt *Options) Copy() (Options, error) {
+	options := Options{}
+	err := codec.Format(&options, opt)
+	return options, err
 }
 
 // MergeIn merge r into req
