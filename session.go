@@ -352,7 +352,7 @@ func show(b []byte, prompt string) string {
 	var buf bytes.Buffer
 	for _, line := range bytes.Split(b, []byte("\n")) {
 		buf.Write([]byte(prompt))
-		buf.Write(line)
+		buf.Write(bytes.Replace(line, []byte("%"), []byte("%%"), -1))
 		buf.WriteString("\n")
 	}
 	str := buf.String()
