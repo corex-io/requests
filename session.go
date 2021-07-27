@@ -34,7 +34,7 @@ var (
 type Session struct {
 	*http.Transport
 	*http.Client
-	options Options
+	opts Options
 	// optFunc []Option
 	LogFunc func(string, ...interface{})
 	errs    chan error
@@ -71,7 +71,7 @@ func New(opts ...Option) *Session {
 			Transport: tr,
 			Jar:       jar,
 		},
-		options: options,
+		opts: options,
 		// optFunc: opts,
 		LogFunc: func(format string, v ...interface{}) {
 			fmt.Fprintf(os.Stderr, format+"\n", v...)
@@ -79,20 +79,19 @@ func New(opts ...Option) *Session {
 		errs: make(chan error),
 		wg:   new(sync.Mutex),
 	}
-
 	return sess
 }
 
 // Init init
 func (sess *Session) Init(opts ...Option) {
 	for _, o := range opts {
-		o(&sess.options)
+		o(&sess.opts)
 	}
 }
 
 // Load config
 func (sess *Session) Load(v interface{}) error {
-	return sess.options.Load(v)
+	return sess.opts.Load(v)
 }
 
 // Proxy set proxy addr
@@ -142,45 +141,35 @@ func (sess *Session) SetKeepAlives(keepAlives bool) *Session {
 
 // DoRequest send a request and return a response
 func (sess Session) DoRequest(ctx context.Context, opts ...Option) (*Response, error) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
+
 	sess.wg.Lock()
 
-	options, err := sess.options.Copy()
-	if err != nil {
-		return nil, err
-	}
-
+	options := sess.opts
 	for _, o := range opts {
 		o(&options)
 	}
 
 	req, err := Request(options)
+
 	sess.wg.Unlock()
-	if err != nil {
-		return nil, err
-	}
 
+	start := time.Now()
 	var resp *http.Response
-	for i := 0; i <= options.Retry; i++ {
 
-		if ctx != nil {
-			req = req.WithContext(ctx) // !!! WithContext returns a shallow copy of r with its context changed to ctx
-		}
-		if options.Trace {
-			resp, err = sess.DebugTrace(req)
-		} else {
-			resp, err = sess.Client.Do(req)
-		}
-		if err == nil {
-			break
-		}
-		if i != 0 {
-			sess.LogFunc("retry[%d/%d], err=%v", i, options.Retry, err)
-		}
+	if err != nil {
+		return WarpResponse(start, req, resp, err), fmt.Errorf("Request: %w", err)
 	}
-	return WarpResponse(resp), err
+
+	if ctx != nil {
+		req = req.WithContext(ctx) // !!! WithContext returns a shallow copy of r with its context changed to ctx
+	}
+	if options.Trace {
+		resp, err = sess.DebugTrace(req)
+	} else {
+		resp, err = sess.Client.Do(req)
+	}
+
+	return WarpResponse(start, req, resp, err), err
 }
 
 // Do http request

@@ -11,21 +11,37 @@ import (
 	"encoding/json"
 )
 
-// Stats stats
-type Stats struct {
-	StartAt string          `json:"start_at"`
-	Cost    int64           `json:"cost"`
-	Method  string          `json:"method"`
-	URL     string          `json:"url"`
-	Body    json.RawMessage `json:"body"`
-	Resp    json.RawMessage `json:"resp"`
+// Stat stats
+type Stat struct {
+	StartAt string `json:"StartAt"`
+	Cost    int64  `json:"Cost"`
+	Request struct {
+		Method string            `json:"Method"`
+		Header map[string]string `json:"Header"`
+		URL    string            `json:"URL"`
+		Body   interface{}       `json:"Body"`
+	} `json:"Request"`
+	Response struct {
+		Header        map[string]string `json:"Header"`
+		Body          interface{}       `json:"Body"`
+		StatusCode    int               `json:"StatusCode"`
+		ContentLength int64             `json:"ContentLength"`
+	} `json:"Response"`
+	Err string `json:"Err"`
+}
+
+func (stat Stat) String() string {
+	b, _ := json.Marshal(stat)
+	return string(b)
 }
 
 // Response wrap std response
 type Response struct {
-	// *http.Request
+	StartAt time.Time
+	Cost    time.Duration
+	*http.Request
 	*http.Response
-	once *sync.Once
+	once sync.Once
 	body *bytes.Buffer
 	err  error
 }
@@ -33,7 +49,6 @@ type Response struct {
 // newResponse newResponse
 func newResponse() *Response {
 	return &Response{
-		once: new(sync.Once),
 		body: new(bytes.Buffer),
 	}
 }
@@ -53,29 +68,76 @@ func (resp *Response) getBody() {
 }
 
 // WarpResponse warp response
-func WarpResponse(resp *http.Response) *Response {
+func WarpResponse(start time.Time, req *http.Request, resp *http.Response, err error) *Response {
 	resp2 := newResponse()
+	resp2.StartAt = start
+	resp2.Cost = time.Since(start)
+	resp2.Request = req
+	resp2.err = err
 	resp2.Response = resp
 	resp2.getBody()
 	return resp2
 }
 
-// HTTPString httpstring
-func (resp Response) HTTPString(startAt time.Time) Stats {
-	body, _ := resp.Response.Request.GetBody()
+// Stat stat
+func (resp Response) Stat() Stat {
 
-	var buf bytes.Buffer
-	_, _ = buf.ReadFrom(body)
-
-	stats := Stats{
-		StartAt: startAt.Format("2006-01-02 15:04:05.000"),
-		Cost:    time.Since(startAt).Milliseconds(),
-		Method:  resp.Response.Request.Method,
-		URL:     resp.Response.Request.URL.String(),
-		Body:    buf.Bytes(),
-		Resp:    resp.body.Bytes(),
+	stat := Stat{
+		StartAt: resp.StartAt.Format("2006-01-02 15:04:05.000"),
+		Cost:    resp.Cost.Milliseconds(),
 	}
-	return stats
+
+	if resp.Response != nil {
+		m2 := make(map[string]interface{})
+
+		if err := json.Unmarshal(resp.body.Bytes(), &m2); err != nil {
+			stat.Response.Body = resp.body.String()
+		} else {
+			stat.Response.Body = m2
+		}
+
+		stat.Response.Header = make(map[string]string)
+
+		for k, v := range resp.Response.Header {
+			stat.Response.Header[k] = v[0]
+		}
+		stat.Response.ContentLength = resp.Response.ContentLength
+		stat.Response.StatusCode = resp.StatusCode
+
+		if resp.Request == nil {
+			resp.Request = resp.Response.Request
+		}
+
+	}
+
+	if resp.Request != nil {
+		stat.Request.Method = resp.Request.Method
+		stat.Request.URL = resp.Request.URL.String()
+		body, _ := resp.Request.GetBody()
+
+		var buf bytes.Buffer
+		_, _ = buf.ReadFrom(body)
+
+		m := make(map[string]interface{})
+
+		if err := json.Unmarshal(buf.Bytes(), &m); err != nil {
+			stat.Request.Body = buf.String()
+		} else {
+			stat.Request.Body = m
+		}
+
+		stat.Request.Header = make(map[string]string)
+
+		for k, v := range resp.Request.Header {
+			stat.Request.Header[k] = v[0]
+		}
+	}
+
+	if resp.err != nil {
+		stat.Err = resp.err.Error()
+	}
+
+	return stat
 }
 
 func (resp Response) String() string {

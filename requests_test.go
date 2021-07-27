@@ -63,7 +63,7 @@ func Test_Post(t *testing.T) {
 	}
 	t.Log(resp.StatusCode, err, resp.Response.ContentLength, resp.Request.ContentLength)
 	t.Log(resp.Text())
-	t.Log(resp.HTTPString(time.Now()))
+	t.Log(resp.Stat())
 }
 
 func Test_FormPost(t *testing.T) {
@@ -95,12 +95,12 @@ func Test_PostForm2(t *testing.T) {
 		"key":   {"this is url key"},
 		"value": {"this is url value"},
 	})
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	resp := WarpResponse(res)
-	t.Log(resp.Text())
+	// if err != nil {
+	// 	t.Error(err)
+	// 	return
+	// }
+	resp := WarpResponse(time.Now(), nil, res, err)
+	t.Log("$$$$$$4", resp.Stat())
 }
 
 func Test_Race(t *testing.T) {
