@@ -113,17 +113,19 @@ func (resp Response) Stat() Stat {
 	if resp.Request != nil {
 		stat.Request.Method = resp.Request.Method
 		stat.Request.URL = resp.Request.URL.String()
-		body, _ := resp.Request.GetBody()
+		if resp.Request.GetBody != nil {
+			body, _ := resp.Request.GetBody()
 
-		var buf bytes.Buffer
-		_, _ = buf.ReadFrom(body)
+			var buf bytes.Buffer
+			_, _ = buf.ReadFrom(body)
 
-		m := make(map[string]interface{})
+			m := make(map[string]interface{})
 
-		if err := json.Unmarshal(buf.Bytes(), &m); err != nil {
-			stat.Request.Body = buf.String()
-		} else {
-			stat.Request.Body = m
+			if err := json.Unmarshal(buf.Bytes(), &m); err != nil {
+				stat.Request.Body = buf.String()
+			} else {
+				stat.Request.Body = m
+			}
 		}
 
 		stat.Request.Header = make(map[string]string)
