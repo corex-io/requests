@@ -1,9 +1,9 @@
 package requests
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/url"
 
@@ -19,7 +19,6 @@ type Options struct {
 	Headers map[string]string      `json:"headers"`
 	Cookies map[string]string      `json:"cookies"`
 	body    interface{}
-	reader  io.Reader
 	Form    url.Values
 	Timeout int  `json:"timeout"`
 	Retry   int  `json:"retry"`
@@ -100,13 +99,6 @@ func Param(k string, v interface{}) Option {
 func Body(body interface{}) Option {
 	return func(o *Options) {
 		o.body = body
-	}
-}
-
-// Reader set reader body
-func Reader(reader io.Reader) Option {
-	return func(o *Options) {
-		o.reader = reader
 	}
 }
 
@@ -221,8 +213,8 @@ func (opt *Options) MergeIn(o Options) {
 }
 
 // Request request
-func (opt *Options) Request() (*http.Request, error) {
-	return Request(*opt)
+func (opt Options) Request() (*http.Request, error) {
+	return NewRequestWithContext(context.Background(), opt)
 }
 
 // Load config

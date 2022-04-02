@@ -41,7 +41,7 @@ type Session struct {
 	wg      *sync.Mutex
 }
 
-// New new session
+// New session
 func New(opts ...Option) *Session {
 
 	options := newOptions(opts...)
@@ -97,6 +97,7 @@ func (sess *Session) Load(v interface{}) error {
 // Proxy set proxy addr
 // os.Setenv("HTTP_PROXY", "http://127.0.0.1:9743")
 // os.Setenv("HTTPS_PROXY", "https://127.0.0.1:9743")
+// https://stackoverflow.com/questions/14661511/setting-up-proxy-for-http-client
 func (sess *Session) Proxy(addr string) error {
 	if addr == "" {
 		return ErrEmptyProxy
@@ -141,10 +142,6 @@ func (sess *Session) SetKeepAlives(keepAlives bool) *Session {
 
 // DoRequest send a request and return a response
 func (sess Session) DoRequest(ctx context.Context, opts ...Option) (*Response, error) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
 	sess.wg.Lock()
 
 	options, err := sess.options.Copy()
@@ -156,7 +153,7 @@ func (sess Session) DoRequest(ctx context.Context, opts ...Option) (*Response, e
 		o(&options)
 	}
 
-	req, err := Request(options)
+	req, err := NewRequestWithContext(ctx, options)
 
 	sess.wg.Unlock()
 
@@ -167,9 +164,6 @@ func (sess Session) DoRequest(ctx context.Context, opts ...Option) (*Response, e
 		return WarpResponse(start, req, resp, err), fmt.Errorf("Request: %w", err)
 	}
 
-	if ctx != nil {
-		req = req.WithContext(ctx) // !!! WithContext returns a shallow copy of r with its context changed to ctx
-	}
 	if options.Trace {
 		resp, err = sess.DebugTrace(req)
 	} else {
@@ -181,12 +175,12 @@ func (sess Session) DoRequest(ctx context.Context, opts ...Option) (*Response, e
 
 // Do http request
 func (sess *Session) Do(method, url, contentType string, body io.Reader) (*Response, error) {
-	return sess.DoRequest(context.Background(), Method(method), URL(url), Header("Content-Type", contentType), Reader(body))
+	return sess.DoRequest(context.Background(), Method(method), URL(url), Header("Content-Type", contentType), Body(body))
 }
 
 // DoWithContext http request
 func (sess *Session) DoWithContext(ctx context.Context, method, url, contentType string, body io.Reader) (*Response, error) {
-	return sess.DoRequest(ctx, Method(method), URL(url), Header("Content-Type", contentType), Reader(body))
+	return sess.DoRequest(ctx, Method(method), URL(url), Header("Content-Type", contentType), Body(body))
 }
 
 // Get send get request

@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"strings"
 	"testing"
 	"time"
 )
@@ -17,10 +16,10 @@ import (
 // }
 
 func Test_Basic(t *testing.T) {
-	resp, _ := Get("http://httpbin.org/get")
+	resp, _ := Get("http://127.0.0.1:12345/get")
 	t.Log(resp.Text())
-	resp, _ = Post("http://httpbin.org/post", "application/json", strings.NewReader(`{"a": "b"}`))
-	t.Log(resp.Text())
+	//resp, _ = Post("http://httpbin.org/post", "application/json", strings.NewReader(`{"a": "b"}`))
+	//t.Log(resp.Text())
 }
 
 func Test_Get(t *testing.T) {
@@ -32,19 +31,24 @@ func Test_Get(t *testing.T) {
 		BasicAuth("user", "123456"),
 		Timeout(1),
 	)
+	if err := sess.Proxy("http://127.0.0.1:8080"); err != nil {
 
-	// req.SetParam("uid", 1).SetCookie("username", "000000")
-	resp, err := sess.DoRequest(context.Background(), Method("GET"), URL("http://httpbin.org/get"))
+		t.Log(err)
+		return
+	}
+
+	resp, err := sess.DoRequest(context.Background(), Method("GET"), URL("http://4.org/get"), Trace(true))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(resp.StatusCode, err)
-	t.Log(resp.Text())
+	//t.Log(resp.Text())
 }
 
-func Test_Post(t *testing.T) {
-	t.Log("Testing get request")
+func Test_PostBody(t *testing.T) {
 	sess := New(BasicAuth("user", "123456"))
+	sess.Proxy("127.0.0.1:8080")
+
 	resp, err := sess.DoRequest(context.Background(),
 		Method("POST"),
 		URL("http://httpbin.org/post"),
@@ -56,14 +60,15 @@ func Test_Post(t *testing.T) {
 		Body(`{"body":"QWER"}`),
 		Retry(3),
 		Header("hello", "world"),
-		Trace(true),
+		//Trace(true),
 	)
 	if err != nil {
-		t.Fatal(err)
+		t.Logf("%v", err)
+		return
 	}
 	t.Log(resp.StatusCode, err, resp.Response.ContentLength, resp.Request.ContentLength)
-	t.Log(resp.Text())
-	t.Log(resp.Stat())
+	//t.Log(resp.Text())
+	//t.Log(resp.Stat())
 }
 
 func Test_FormPost(t *testing.T) {

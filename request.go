@@ -2,6 +2,7 @@ package requests
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,33 +11,38 @@ import (
 	"strings"
 )
 
-// Request request
-func Request(opt Options) (*http.Request, error) {
-
-	var reader io.Reader
-	switch {
-	case opt.body != nil:
-		switch v := opt.body.(type) {
-		case io.Reader:
-			reader = opt.body.(io.Reader)
-		case []byte:
-			reader = bytes.NewReader(v)
-		case string:
-			reader = bytes.NewReader([]byte(v))
-		default:
-			b, err := json.Marshal(opt.body)
-			if err != nil {
-				return nil, err
-			}
-			reader = bytes.NewReader(b)
+func getBodyReader(body interface{}) (io.Reader, error) {
+	if body == nil {
+		return nil, nil
+	}
+	switch v := body.(type) {
+	case []byte:
+		return bytes.NewReader(v), nil
+	case string:
+		return bytes.NewReader([]byte(v)), nil
+	case *bytes.Buffer:
+		return bytes.NewReader(v.Bytes()), nil
+	case io.Reader, *bytes.Reader, io.ReadSeeker:
+		return body.(io.Reader), nil
+	case url.Values:
+		return strings.NewReader(v.Encode()), nil
+	default:
+		b, err := json.Marshal(body)
+		if err != nil {
+			return nil, err
 		}
-	case opt.reader != nil:
-		reader = opt.reader
-	case len(opt.Form) != 0:
-		reader = strings.NewReader(opt.Form.Encode())
+		return bytes.NewReader(b), nil
+	}
+}
+
+// NewRequestWithContext request
+func NewRequestWithContext(ctx context.Context, opt Options) (*http.Request, error) {
+	reader, err := getBodyReader(opt.body)
+	if err != nil {
+		return nil, err
 	}
 
-	req, err := http.NewRequest(opt.Method, opt.URL, reader)
+	req, err := http.NewRequestWithContext(ctx, opt.Method, opt.URL, reader)
 	if err != nil {
 		return nil, err
 	}
