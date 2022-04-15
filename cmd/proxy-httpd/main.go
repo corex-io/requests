@@ -18,9 +18,9 @@ func main() {
 		Addr:    addr,
 		Handler: &proxyHandler{},
 	}
-	fmt.Fprintf(os.Stdout, "http serve[%s]...\n", addr)
+	_, _ = fmt.Fprintf(os.Stdout, "http serve[%s]...\n", addr)
 	if err := server.ListenAndServe(); err != nil {
-		fmt.Println("%#v", err)
+		_, _ = fmt.Println(err)
 	}
 }
 
@@ -29,7 +29,7 @@ type proxyHandler struct{}
 func (p *proxyHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	status, now := http.StatusBadGateway, time.Now()
 	defer func() {
-		fmt.Fprintf(os.Stdout, "%-18s -> %s [%d] cost: %.2fs\n", r.RemoteAddr, r.RequestURI, status, time.Since(now).Seconds())
+		_, _ = fmt.Fprintf(os.Stdout, "%-18s -> %s [%d] cost: %.2fs\n", r.RemoteAddr, r.RequestURI, status, time.Since(now).Seconds())
 	}()
 	proxy := &httputil.ReverseProxy{}
 
@@ -39,7 +39,7 @@ func (p *proxyHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		return nil
 	}
 	proxy.ErrorHandler = func(rw http.ResponseWriter, req *http.Request, err error) {
-		fmt.Fprintf(os.Stdout, "http: proxy error: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stdout, "http: proxy error: %v\n", err)
 		rw.WriteHeader(http.StatusBadGateway)
 	}
 	proxy.ServeHTTP(rw, r)

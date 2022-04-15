@@ -2,6 +2,7 @@ package requests
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 )
@@ -21,4 +22,20 @@ func DumpRequestIndent(req *http.Request) string {
 		b.WriteString("\n")
 	}
 	return b.String()
+}
+
+const maxTruncateBytes = 9999
+
+func show(b []byte, prompt string) string {
+	var buf bytes.Buffer
+	for _, line := range bytes.Split(b, []byte("\n")) {
+		buf.Write([]byte(prompt))
+		buf.Write(bytes.Replace(line, []byte("%"), []byte("%%"), -1))
+		buf.WriteString("\n")
+	}
+	str := buf.String()
+	if len(str) > maxTruncateBytes {
+		return fmt.Sprintf("%s...[Len=%d, Truncated]", str[:maxTruncateBytes], len(str))
+	}
+	return str
 }

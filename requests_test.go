@@ -2,18 +2,22 @@ package requests
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
-// func Test_Download(t *testing.T) {
-// 	t.Log("Testing Download")
-// 	err := DownloadFile("https://github.com/prometheus/prometheus/releases/download/v2.12.0/prometheus-2.12.0.linux-amd64.tar.gz", true)
-// 	t.Log(err)
-// }
+func Test_Download(t *testing.T) {
+	t.Log("Testing Download")
+	err := DownloadFile("https://github.com/prometheus/prometheus/releases/download/v2.12.0/prometheus-2.12.0.linux-amd64.tar.gz", true)
+	t.Log(err)
+}
 
 func Test_Basic(t *testing.T) {
 	resp, _ := Get("http://127.0.0.1:12345/get")
@@ -25,21 +29,20 @@ func Test_Basic(t *testing.T) {
 func Test_Get(t *testing.T) {
 	t.Log("Testing get request")
 	sess := New(
-		Retry(3),
 		Header("a", "b"),
-		Cookie("username", "golang"),
+		Cookie(http.Cookie{Name: "username", Value: "golang"}),
 		BasicAuth("user", "123456"),
 		Timeout(1),
 	)
 	if err := sess.Proxy("http://127.0.0.1:8080"); err != nil {
-
 		t.Log(err)
 		return
 	}
 
 	resp, err := sess.DoRequest(context.Background(), Method("GET"), URL("http://4.org/get"), Trace(true))
 	if err != nil {
-		t.Fatal(err)
+		t.Errorf("%s", err.Error())
+		return
 	}
 	t.Log(resp.StatusCode, err)
 	//t.Log(resp.Text())
@@ -47,20 +50,22 @@ func Test_Get(t *testing.T) {
 
 func Test_PostBody(t *testing.T) {
 	sess := New(BasicAuth("user", "123456"))
-	sess.Proxy("127.0.0.1:8080")
+	//if err := sess.Proxy("127.0.0.1:8080"); err != nil {
+	//	t.Error(err)
+	//	return
+	//}
 
 	resp, err := sess.DoRequest(context.Background(),
 		Method("POST"),
 		URL("http://httpbin.org/post"),
 		Params(map[string]interface{}{
-			"a": "b",
+			"a": "b/c",
 			"c": 3,
 			"d": []int{1, 2, 3},
 		}),
 		Body(`{"body":"QWER"}`),
-		Retry(3),
 		Header("hello", "world"),
-		//Trace(true),
+		Trace(true),
 	)
 	if err != nil {
 		t.Logf("%v", err)
@@ -78,10 +83,9 @@ func Test_FormPost(t *testing.T) {
 	resp, err := sess.DoRequest(context.Background(),
 		Method("POST"),
 		URL("http://httpbin.org/post"),
-		Retry(3),
-		Form("name", "12.com"),
+		Form(url.Values{"name": {"12.com"}}),
 		Params(map[string]interface{}{
-			"a": "b",
+			"a": "b/c",
 			"c": 3,
 			"d": []int{1, 2, 3},
 		}),
@@ -104,7 +108,7 @@ func Test_PostForm2(t *testing.T) {
 	// 	t.Error(err)
 	// 	return
 	// }
-	resp := WarpResponse(time.Now(), nil, res, err)
+	resp := Response{StartAt: time.Now(), Response: res, Err: err}
 	t.Log("$$$$$$4", resp.Stat())
 }
 
@@ -115,8 +119,56 @@ func Test_Race(t *testing.T) {
 	sess := New(URL("http://httpbin.org/post")) //, Auth("user", "123456"))
 	for i := 0; i < 10; i++ {
 		go func() {
-			sess.DoRequest(ctx, MethodPost, Body(`{"a":"b"}`), Params(map[string]interface{}{"1": "2"})) // nolint: errcheck
+			sess.DoRequest(ctx, MethodPost, Body(`{"a":"b"}`), Params(map[string]interface{}{"1": "2/2"})) // nolint: errcheck
 		}()
 	}
 	time.Sleep(3 * time.Second)
+}
+
+func Test_MockServer(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		io.Copy(w, r.Body)
+	}))
+	defer s.Close()
+	sess := New()
+	resp, err := sess.DoRequest(context.Background(), URL(s.URL), Path("/234"), Trace(true))
+	//t.Logf("%T, %T", resp.Request, resp.Response.Request)
+	t.Logf("%#v, %v", resp.String(), err)
+}
+
+//  go test -v -test.bench=Benchmark_Request -test.run=Benchmark_Request -benchmem --race
+func Benchmark_Request(b *testing.B) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		io.Copy(w, r.Body)
+	}))
+	defer s.Close()
+	sess := New()
+	for i := 0; i < b.N; i++ {
+		resp, err := sess.DoRequest(context.Background(),
+			URL(s.URL),
+			Body(map[string]string{"a": "b"}),
+			Params(map[string]interface{}{"123": "456"}),
+			Cookie(http.Cookie{Name: "cookie_name", Value: "cookie_value"}),
+		)
+		_, _ = resp, err
+	}
+
+}
+
+func Test_Retry(t *testing.T) {
+	var reqCount int32 = 0
+
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqNo := atomic.AddInt32(&reqCount, 1)
+		if reqNo%3 == 0 {
+			w.WriteHeader(404)
+		} else {
+			w.WriteHeader(200)
+		}
+		w.Write([]byte(fmt.Sprintf("response: %d", reqNo)))
+	}))
+	defer s.Close()
+
+	sess := New()
+	sess.DoRequest(context.Background(), URL(s.URL))
 }

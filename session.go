@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"net"
 	"net/http"
-	"net/http/cookiejar"
 	"net/http/httptrace"
 	"net/http/httputil"
 	"net/url"
@@ -22,11 +20,6 @@ import (
 	"golang.org/x/net/proxy"
 )
 
-// var
-var (
-	ErrEmptyProxy = errors.New("proxy is empty")
-)
-
 // Session httpclient session
 // Clients and Transports are safe for concurrent use by multiple goroutines
 // for efficiency should only be created once and re-used.
@@ -35,7 +28,6 @@ type Session struct {
 	*http.Transport
 	*http.Client
 	options Options
-	// optFunc []Option
 	LogFunc func(string, ...interface{})
 	errs    chan error
 	wg      *sync.Mutex
@@ -46,7 +38,7 @@ func New(opts ...Option) *Session {
 
 	options := newOptions(opts...)
 
-	tr := &http.Transport{
+	transport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second, // 限制建立TCP连接的时间
@@ -62,19 +54,16 @@ func New(opts ...Option) *Session {
 			InsecureSkipVerify: !options.Verify,
 		},
 	}
-	jar, _ := cookiejar.New(nil)
 
 	sess := &Session{
-		Transport: tr,
+		Transport: transport,
 		Client: &http.Client{
 			Timeout:   time.Duration(options.Timeout) * time.Millisecond,
-			Transport: tr,
-			Jar:       jar,
+			Transport: transport,
 		},
 		options: options,
-		// optFunc: opts,
 		LogFunc: func(format string, v ...interface{}) {
-			fmt.Fprintf(os.Stderr, format+"\n", v...)
+			_, _ = fmt.Fprintf(os.Stderr, format+"\n", v...)
 		},
 		errs: make(chan error),
 		wg:   new(sync.Mutex),
@@ -89,24 +78,18 @@ func (sess *Session) Init(opts ...Option) {
 	}
 }
 
-// Load config
-func (sess *Session) Load(v interface{}) error {
-	return sess.options.Load(v)
-}
-
 // Proxy set proxy addr
 // os.Setenv("HTTP_PROXY", "http://127.0.0.1:9743")
 // os.Setenv("HTTPS_PROXY", "https://127.0.0.1:9743")
 // https://stackoverflow.com/questions/14661511/setting-up-proxy-for-http-client
 func (sess *Session) Proxy(addr string) error {
-	if addr == "" {
-		return ErrEmptyProxy
-	}
 	proxyURL, err := url.Parse(addr)
 	if err != nil {
 		return err
 	}
 	switch proxyURL.Scheme {
+	case "http", "https":
+		sess.Transport.Proxy = http.ProxyURL(proxyURL)
 	case "socks5", "socks4":
 		sess.Transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 			dialer, err := proxy.SOCKS5("tcp", proxyURL.Host, nil, proxy.Direct)
@@ -116,7 +99,7 @@ func (sess *Session) Proxy(addr string) error {
 			return dialer.Dial(network, addr)
 		}
 	default:
-		sess.Transport.Proxy = http.ProxyURL(proxyURL)
+		return fmt.Errorf("proxy scheme[%s] invalid", proxyURL.Scheme)
 	}
 	return nil
 }
@@ -157,20 +140,23 @@ func (sess Session) DoRequest(ctx context.Context, opts ...Option) (*Response, e
 
 	sess.wg.Unlock()
 
-	start := time.Now()
-	var resp *http.Response
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &Response{StartAt: time.Now()}
 
 	if err != nil {
-		return WarpResponse(start, req, resp, err), fmt.Errorf("Request: %w", err)
+		return nil, fmt.Errorf("build request: %w", err)
 	}
 
 	if options.Trace {
-		resp, err = sess.DebugTrace(req)
+		resp.Response, resp.Err = sess.DebugTrace(req)
 	} else {
-		resp, err = sess.Client.Do(req)
+		resp.Response, resp.Err = sess.Client.Do(req)
 	}
-
-	return WarpResponse(start, req, resp, err), err
+	resp.unpack()
+	return resp, resp.Err
 }
 
 // Do http request
@@ -282,8 +268,6 @@ func (sess *Session) Uploadmultipart(url, file string, fields map[string]string)
 }
 
 // DebugTrace trace a request
-// ** BUG ** 显示URI中的‘/’参数会被%转义, 字符串%有特殊含义. 正确输入为:namespace=aws/ec2 实际输出为: namespace=aws%!F(MISSING)ec2
-// 不影响使用, 展示问题
 func (sess *Session) DebugTrace(req *http.Request) (*http.Response, error) {
 	trace := &httptrace.ClientTrace{
 		GetConn: func(hostPort string) {
@@ -335,19 +319,4 @@ func (sess *Session) DebugTrace(req *http.Request) (*http.Response, error) {
 	}
 	sess.LogFunc(show(respLog, "< "))
 	return resp, nil
-}
-
-func show(b []byte, prompt string) string {
-	var maxTruncate = 9999
-	var buf bytes.Buffer
-	for _, line := range bytes.Split(b, []byte("\n")) {
-		buf.Write([]byte(prompt))
-		buf.Write(bytes.Replace(line, []byte("%"), []byte("%%"), -1))
-		buf.WriteString("\n")
-	}
-	str := buf.String()
-	if len(str) > maxTruncate {
-		return fmt.Sprintf("%s...[Len=%d, Truncated]", str[:maxTruncate], len(str))
-	}
-	return str
 }

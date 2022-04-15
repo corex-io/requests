@@ -27,7 +27,9 @@ type Stat struct {
 		StatusCode    int               `json:"StatusCode"`
 		ContentLength int64             `json:"ContentLength"`
 	} `json:"Response"`
-	Err string `json:"Err"`
+	Err       string `json:"Err"`
+	Exception string `json:"Exception"`
+	Retry     int    `json:"Retry"`
 }
 
 func (stat Stat) String() string {
@@ -37,46 +39,28 @@ func (stat Stat) String() string {
 
 // Response wrap std response
 type Response struct {
+	*http.Response
+
 	StartAt time.Time
 	Cost    time.Duration
-	*http.Request
-	*http.Response
+	Retry   int
+	body    bytes.Buffer
+	Err     error
+
 	once sync.Once
-	body *bytes.Buffer
-	err  error
 }
 
-// newResponse newResponse
-func newResponse() *Response {
-	return &Response{
-		body: new(bytes.Buffer),
-	}
-}
-
-func (resp *Response) getBody() {
+func (resp *Response) unpack() {
 	resp.once.Do(func() {
+		defer func() {
+			resp.Cost = time.Since(resp.StartAt)
+		}()
 		if resp.Response == nil || resp.Response.Body == nil {
 			return
 		}
 		defer resp.Response.Body.Close()
-		var n int64
-		n, resp.err = resp.body.ReadFrom(resp.Response.Body)
-		if resp.Response.ContentLength <= 0 {
-			resp.Response.ContentLength = n
-		}
+		resp.Response.ContentLength, resp.Err = resp.body.ReadFrom(resp.Response.Body)
 	})
-}
-
-// WarpResponse warp response
-func WarpResponse(start time.Time, req *http.Request, resp *http.Response, err error) *Response {
-	resp2 := newResponse()
-	resp2.StartAt = start
-	resp2.Cost = time.Since(start)
-	resp2.Request = req
-	resp2.err = err
-	resp2.Response = resp
-	resp2.getBody()
-	return resp2
 }
 
 // Stat stat
@@ -88,12 +72,12 @@ func (resp Response) Stat() Stat {
 	}
 
 	if resp.Response != nil {
-		m2 := make(map[string]interface{})
+		body := make(map[string]interface{})
 
-		if err := json.Unmarshal(resp.body.Bytes(), &m2); err != nil {
+		if err := json.Unmarshal(resp.body.Bytes(), &body); err != nil {
 			stat.Response.Body = resp.body.String()
 		} else {
-			stat.Response.Body = m2
+			stat.Response.Body = body
 		}
 
 		stat.Response.Header = make(map[string]string)
@@ -135,8 +119,8 @@ func (resp Response) Stat() Stat {
 		}
 	}
 
-	if resp.err != nil {
-		stat.Err = resp.err.Error()
+	if resp.Err != nil {
+		stat.Err = resp.Err.Error()
 	}
 
 	return stat
@@ -147,10 +131,10 @@ func (resp Response) String() string {
 }
 
 func (resp Response) Error() string {
-	if resp.err == nil {
+	if resp.Err == nil {
 		return ""
 	}
-	return resp.err.Error()
+	return resp.Err.Error()
 }
 
 // StdLib return net/http.Response

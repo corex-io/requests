@@ -4,14 +4,14 @@
 
 ### Usage
 
-* 基本用法
+* Basic Usage
 
 ```(golang)
 requests.Get("http://httpbin.org/get")
 requests.Post("http://httpbin.org/post", "application/json", strings.NewReader(`{"a": "b"}`))
 ```
 
-* 高级用法
+* Advanced Usage
 
 ```(golang)
 package main

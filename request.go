@@ -15,11 +15,12 @@ func getBodyReader(body interface{}) (io.Reader, error) {
 	if body == nil {
 		return nil, nil
 	}
+	fmt.Println("#####", body)
 	switch v := body.(type) {
 	case []byte:
 		return bytes.NewReader(v), nil
 	case string:
-		return bytes.NewReader([]byte(v)), nil
+		return strings.NewReader(v), nil
 	case *bytes.Buffer:
 		return bytes.NewReader(v.Bytes()), nil
 	case io.Reader, *bytes.Reader, io.ReadSeeker:
@@ -58,11 +59,11 @@ func NewRequestWithContext(ctx context.Context, opt Options) (*http.Request, err
 		}
 		req.URL.RawQuery += k + "=" + url.QueryEscape(fmt.Sprintf("%v", v))
 	}
-	for k, v := range opt.Headers {
-		req.Header.Set(k, v)
-	}
-	for k, v := range opt.Cookies {
-		req.AddCookie(&http.Cookie{Name: k, Value: v})
+
+	req.Header = opt.Header
+
+	for _, cookie := range opt.Cookies {
+		req.AddCookie(&cookie)
 	}
 	return req, nil
 }
