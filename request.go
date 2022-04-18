@@ -22,7 +22,7 @@ func getBodyReader(body interface{}) (io.Reader, error) {
 		return strings.NewReader(v), nil
 	case *bytes.Buffer:
 		return bytes.NewReader(v.Bytes()), nil
-	case io.Reader, *bytes.Reader, io.ReadSeeker:
+	case io.Reader, io.ReadSeeker, *bytes.Reader, *strings.Reader:
 		return body.(io.Reader), nil
 	case url.Values:
 		return strings.NewReader(v.Encode()), nil
