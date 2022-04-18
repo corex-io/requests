@@ -15,7 +15,6 @@ func getBodyReader(body interface{}) (io.Reader, error) {
 	if body == nil {
 		return nil, nil
 	}
-	fmt.Println("#####", body)
 	switch v := body.(type) {
 	case []byte:
 		return bytes.NewReader(v), nil
