@@ -172,3 +172,11 @@ func Test_Retry(t *testing.T) {
 	sess := New()
 	sess.DoRequest(context.Background(), URL(s.URL))
 }
+
+func Test_Cannel(t *testing.T) {
+	sess := New()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	resp, err := sess.DoRequest(ctx, URL("http://127.0.0.1:9099"))
+	t.Logf("%s, err=%v", resp.Stat(), err)
+}

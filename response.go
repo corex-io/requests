@@ -40,7 +40,7 @@ func (stat Stat) String() string {
 // Response wrap std response
 type Response struct {
 	*http.Response
-
+	*http.Request
 	StartAt time.Time
 	Cost    time.Duration
 	Retry   int
@@ -87,10 +87,6 @@ func (resp Response) Stat() Stat {
 		}
 		stat.Response.ContentLength = resp.Response.ContentLength
 		stat.Response.StatusCode = resp.StatusCode
-
-		if resp.Request == nil {
-			resp.Request = resp.Response.Request
-		}
 
 	}
 

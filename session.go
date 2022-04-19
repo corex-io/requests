@@ -140,14 +140,10 @@ func (sess Session) DoRequest(ctx context.Context, opts ...Option) (*Response, e
 
 	sess.wg.Unlock()
 
-	if err != nil {
-		return nil, err
-	}
-
-	resp := &Response{StartAt: time.Now()}
+	resp := &Response{StartAt: time.Now(), Request: req, Err: err}
 
 	if err != nil {
-		return nil, fmt.Errorf("build request: %w", err)
+		return nil, fmt.Errorf("request: %w", err)
 	}
 
 	if options.Trace {
