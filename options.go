@@ -3,7 +3,6 @@ package requests
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -19,7 +18,7 @@ type Options struct {
 	Params  map[string]any `json:"params"`
 	Header  http.Header    `json:"headers"`
 	Cookies []http.Cookie  `json:"cookies"`
-	body    interface{}
+	body    any
 	Timeout time.Duration `json:"timeout"`
 	Trace   bool          `json:"trace"`
 	Verify  bool          `json:"verify"`
@@ -34,9 +33,9 @@ type Option func(*Options)
 func newOptions(opts ...Option) Options {
 	opt := Options{
 		Method:  "GET",
-		Params:  make(map[string]interface{}),
+		Params:  make(map[string]any),
 		Header:  make(http.Header),
-		Timeout: 30000, // 30s
+		Timeout: 30 * time.Second,
 		LogFunc: func(format string, v ...any) {
 			_, _ = fmt.Fprintf(os.Stderr, format+"\n", v...)
 		},
@@ -75,7 +74,7 @@ func Path(path string) Option {
 }
 
 // Params add query args
-func Params(query map[string]interface{}) Option {
+func Params(query map[string]any) Option {
 	return func(o *Options) {
 		for k, v := range query {
 			o.Params[k] = v
@@ -84,14 +83,14 @@ func Params(query map[string]interface{}) Option {
 }
 
 // Param params
-func Param(k string, v interface{}) Option {
+func Param(k string, v any) Option {
 	return func(o *Options) {
 		o.Params[k] = v
 	}
 }
 
 // Body request body
-func Body(body interface{}) Option {
+func Body(body any) Option {
 	return func(o *Options) {
 		o.body = body
 	}
@@ -162,12 +161,27 @@ func Verify(verify bool) Option {
 	}
 }
 
-// Copy copy
-func (opt *Options) Copy() (Options, error) {
-	var options Options
-	b, err := json.Marshal(opt)
-	if err != nil {
-		return options, err
+func Logf(f func(context.Context, Stat)) Option {
+	return func(o *Options) {
+		o.Logf = f
 	}
-	return options, json.Unmarshal(b, &options)
+}
+
+// Copy copy
+func (opt Options) Copy() Options {
+	options := Options{
+		Method:  opt.Method,
+		URL:     opt.URL,
+		Path:    opt.Path,
+		Params:  opt.Params,
+		Header:  opt.Header,
+		Cookies: opt.Cookies,
+		body:    opt.body,
+		Timeout: opt.Timeout,
+		Trace:   opt.Trace,
+		Verify:  opt.Verify,
+		LogFunc: opt.LogFunc,
+		Logf:    opt.Logf,
+	}
+	return options
 }

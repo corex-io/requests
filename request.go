@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-func getBodyReader(body interface{}) (io.Reader, error) {
+func getBodyReader(body any) (io.Reader, error) {
 	if body == nil {
 		return nil, nil
 	}

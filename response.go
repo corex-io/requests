@@ -19,11 +19,11 @@ type Stat struct {
 		Method string            `json:"Method"`
 		Header map[string]string `json:"Header"`
 		URL    string            `json:"URL"`
-		Body   interface{}       `json:"Body"`
+		Body   any               `json:"Body"`
 	} `json:"Request"`
 	Response struct {
 		Header        map[string]string `json:"Header"`
-		Body          interface{}       `json:"Body"`
+		Body          any               `json:"Body"`
 		StatusCode    int               `json:"StatusCode"`
 		ContentLength int64             `json:"ContentLength"`
 	} `json:"Response"`
@@ -72,7 +72,7 @@ func (resp Response) Stat() Stat {
 	}
 
 	if resp.Response != nil {
-		body := make(map[string]interface{})
+		body := make(map[string]any)
 
 		if err := json.Unmarshal(resp.body.Bytes(), &body); err != nil {
 			stat.Response.Body = resp.body.String()
@@ -99,7 +99,7 @@ func (resp Response) Stat() Stat {
 			var buf bytes.Buffer
 			_, _ = buf.ReadFrom(body)
 
-			m := make(map[string]interface{})
+			m := make(map[string]any)
 
 			if err := json.Unmarshal(buf.Bytes(), &m); err != nil {
 				stat.Request.Body = buf.String()
@@ -159,7 +159,7 @@ func (resp *Response) Download(name string) (int, error) {
 }
 
 // JSON parse response
-func (resp *Response) JSON(v interface{}) error {
+func (resp *Response) JSON(v any) error {
 	return json.Unmarshal(resp.body.Bytes(), v)
 }
 

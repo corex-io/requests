@@ -20,8 +20,8 @@ func Test_Download(t *testing.T) {
 }
 
 func Test_Basic(t *testing.T) {
-	resp, _ := Get("http://127.0.0.1:12345/get")
-	t.Log(resp.Text())
+	resp, err := Get("http://127.0.0.1:12345/get")
+	t.Logf("%#v, %v", resp, err)
 	//resp, _ = Post("http://httpbin.org/post", "application/json", strings.NewReader(`{"a": "b"}`))
 	//t.Log(resp.Text())
 }
@@ -49,7 +49,12 @@ func Test_Get(t *testing.T) {
 }
 
 func Test_PostBody(t *testing.T) {
-	sess := New(BasicAuth("user", "123456"))
+	sess := New(
+		BasicAuth("user", "123456"),
+		//Logf(func(context.Context, Stat) {
+		//	fmt.Println("session")
+		//}),
+	)
 	//if err := sess.Proxy("127.0.0.1:8080"); err != nil {
 	//	t.Error(err)
 	//	return
@@ -58,7 +63,7 @@ func Test_PostBody(t *testing.T) {
 	resp, err := sess.DoRequest(context.Background(),
 		Method("POST"),
 		URL("http://httpbin.org/post"),
-		Params(map[string]interface{}{
+		Params(map[string]any{
 			"a": "b/c",
 			"c": 3,
 			"d": []int{1, 2, 3},
@@ -66,6 +71,9 @@ func Test_PostBody(t *testing.T) {
 		Body(`{"body":"QWER"}`),
 		Header("hello", "world"),
 		Trace(true),
+		Logf(func(ctx context.Context, stat Stat) {
+			fmt.Println("request")
+		}),
 	)
 	if err != nil {
 		t.Logf("%v", err)
@@ -84,7 +92,7 @@ func Test_FormPost(t *testing.T) {
 		Method("POST"),
 		URL("http://httpbin.org/post"),
 		Form(url.Values{"name": {"12.com"}}),
-		Params(map[string]interface{}{
+		Params(map[string]any{
 			"a": "b/c",
 			"c": 3,
 			"d": []int{1, 2, 3},
@@ -119,7 +127,7 @@ func Test_Race(t *testing.T) {
 	sess := New(URL("http://httpbin.org/post")) //, Auth("user", "123456"))
 	for i := 0; i < 10; i++ {
 		go func() {
-			sess.DoRequest(ctx, MethodPost, Body(`{"a":"b"}`), Params(map[string]interface{}{"1": "2/2"})) // nolint: errcheck
+			sess.DoRequest(ctx, MethodPost, Body(`{"a":"b"}`), Params(map[string]any{"1": "2/2"})) // nolint: errcheck
 		}()
 	}
 	time.Sleep(3 * time.Second)
@@ -147,7 +155,7 @@ func Benchmark_Request(b *testing.B) {
 		resp, err := sess.DoRequest(context.Background(),
 			URL(s.URL),
 			Body(map[string]string{"a": "b"}),
-			Params(map[string]interface{}{"123": "456"}),
+			Params(map[string]any{"123": "456"}),
 			Cookie(http.Cookie{Name: "cookie_name", Value: "cookie_value"}),
 		)
 		_, _ = resp, err

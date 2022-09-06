@@ -113,18 +113,11 @@ func (sess *Session) SetKeepAlives(keepAlives bool) *Session {
 // DoRequest send a request and return a response
 func (sess *Session) DoRequest(ctx context.Context, opts ...Option) (*Response, error) {
 	sess.wg.Lock()
-
-	options, err := sess.options.Copy()
-	if err != nil {
-		return nil, err
-	}
-
+	options := sess.options.Copy()
 	for _, o := range opts {
 		o(&options)
 	}
-
 	req, err := NewRequestWithContext(ctx, options)
-
 	sess.wg.Unlock()
 
 	resp := &Response{StartAt: time.Now(), Request: req, Err: err}
@@ -139,8 +132,8 @@ func (sess *Session) DoRequest(ctx context.Context, opts ...Option) (*Response, 
 		resp.Response, resp.Err = sess.Client.Do(req)
 	}
 	resp.unpack()
-	if sess.options.Logf != nil {
-		sess.options.Logf(ctx, resp.Stat())
+	if options.Logf != nil {
+		options.Logf(ctx, resp.Stat())
 	}
 	return resp, resp.Err
 }
