@@ -7,11 +7,6 @@ import (
 
 var sess = New()
 
-// SetLogFunc set log handler
-func SetLogFunc(f func(string, ...interface{})) {
-	sess.SetLogFunc(f)
-}
-
 // Get send get request
 func Get(url string) (*Response, error) {
 	return sess.Get(url)

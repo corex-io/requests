@@ -1,24 +1,30 @@
 package requests
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
+	"os"
+	"time"
 )
 
 // Options request
 type Options struct {
-	Method  string                 `json:"method"`
-	URL     string                 `json:"url"`
-	Path    []string               `json:"path"`
-	Params  map[string]interface{} `json:"params"`
-	Header  http.Header            `json:"headers"`
-	Cookies []http.Cookie          `json:"cookies"`
+	Method  string         `json:"method"`
+	URL     string         `json:"url"`
+	Path    []string       `json:"path"`
+	Params  map[string]any `json:"params"`
+	Header  http.Header    `json:"headers"`
+	Cookies []http.Cookie  `json:"cookies"`
 	body    interface{}
-	Timeout int  `json:"timeout"`
-	Trace   bool `json:"trace"`
-	Verify  bool `json:"verify"`
+	Timeout time.Duration `json:"timeout"`
+	Trace   bool          `json:"trace"`
+	Verify  bool          `json:"verify"`
+	LogFunc func(string, ...any)
+	Logf    func(ctx context.Context, stat Stat)
 }
 
 // Option func
@@ -31,6 +37,9 @@ func newOptions(opts ...Option) Options {
 		Params:  make(map[string]interface{}),
 		Header:  make(http.Header),
 		Timeout: 30000, // 30s
+		LogFunc: func(format string, v ...any) {
+			_, _ = fmt.Fprintf(os.Stderr, format+"\n", v...)
+		},
 	}
 	for _, o := range opts {
 		o(&opt)
@@ -133,7 +142,7 @@ func BasicAuth(user, pass string) Option {
 }
 
 // Timeout timeout, Millisecond 毫秒
-func Timeout(timeout int) Option {
+func Timeout(timeout time.Duration) Option {
 	return func(o *Options) {
 		o.Timeout = timeout
 	}

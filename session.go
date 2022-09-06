@@ -28,9 +28,7 @@ type Session struct {
 	*http.Transport
 	*http.Client
 	options Options
-	LogFunc func(string, ...interface{})
-	errs    chan error
-	wg      *sync.Mutex
+	wg      sync.Mutex
 }
 
 // New session
@@ -58,15 +56,10 @@ func New(opts ...Option) *Session {
 	sess := &Session{
 		Transport: transport,
 		Client: &http.Client{
-			Timeout:   time.Duration(options.Timeout) * time.Millisecond,
+			Timeout:   options.Timeout,
 			Transport: transport,
 		},
 		options: options,
-		LogFunc: func(format string, v ...interface{}) {
-			_, _ = fmt.Fprintf(os.Stderr, format+"\n", v...)
-		},
-		errs: make(chan error),
-		wg:   new(sync.Mutex),
 	}
 	return sess
 }
@@ -104,12 +97,6 @@ func (sess *Session) Proxy(addr string) error {
 	return nil
 }
 
-// SetLogFunc set log handler
-func (sess *Session) SetLogFunc(f func(string, ...interface{})) *Session {
-	sess.LogFunc = f
-	return sess
-}
-
 // Timeout set client timeout
 func (sess *Session) Timeout(timeout int) *Session {
 	sess.Client.Timeout = time.Duration(timeout) * time.Second
@@ -124,7 +111,7 @@ func (sess *Session) SetKeepAlives(keepAlives bool) *Session {
 }
 
 // DoRequest send a request and return a response
-func (sess Session) DoRequest(ctx context.Context, opts ...Option) (*Response, error) {
+func (sess *Session) DoRequest(ctx context.Context, opts ...Option) (*Response, error) {
 	sess.wg.Lock()
 
 	options, err := sess.options.Copy()
@@ -152,6 +139,9 @@ func (sess Session) DoRequest(ctx context.Context, opts ...Option) (*Response, e
 		resp.Response, resp.Err = sess.Client.Do(req)
 	}
 	resp.unpack()
+	if sess.options.Logf != nil {
+		sess.options.Logf(ctx, resp.Stat())
+	}
 	return resp, resp.Err
 }
 
@@ -267,29 +257,29 @@ func (sess *Session) Uploadmultipart(url, file string, fields map[string]string)
 func (sess *Session) DebugTrace(req *http.Request) (*http.Response, error) {
 	trace := &httptrace.ClientTrace{
 		GetConn: func(hostPort string) {
-			sess.LogFunc("* Connect: %v", hostPort)
+			sess.options.LogFunc("* Connect: %v", hostPort)
 		},
 		ConnectStart: func(network, addr string) {
-			sess.LogFunc("* Trying %v %v...", network, addr)
+			sess.options.LogFunc("* Trying %v %v...", network, addr)
 		},
 		ConnectDone: func(network, addr string, err error) {
-			sess.LogFunc("* Completed connection: %v %v, err=%v", network, addr, err)
+			sess.options.LogFunc("* Completed connection: %v %v, err=%v", network, addr, err)
 		},
 		GotConn: func(connInfo httptrace.GotConnInfo) {
-			sess.LogFunc("* Got Conn: %v -> %v", connInfo.Conn.LocalAddr(), connInfo.Conn.RemoteAddr())
+			sess.options.LogFunc("* Got Conn: %v -> %v", connInfo.Conn.LocalAddr(), connInfo.Conn.RemoteAddr())
 		},
 		DNSStart: func(dnsInfo httptrace.DNSStartInfo) {
-			sess.LogFunc("* Resolved Host: %v", dnsInfo.Host)
+			sess.options.LogFunc("* Resolved Host: %v", dnsInfo.Host)
 		},
 		DNSDone: func(dnsInfo httptrace.DNSDoneInfo) {
 			var ipaddrs []string
 			for _, ipaddr := range dnsInfo.Addrs {
 				ipaddrs = append(ipaddrs, ipaddr.String())
 			}
-			sess.LogFunc("* Resolved DNS: %v, Coalesced: %v, err=%v", ipaddrs, dnsInfo.Coalesced, dnsInfo.Err)
+			sess.options.LogFunc("* Resolved DNS: %v, Coalesced: %v, err=%v", ipaddrs, dnsInfo.Coalesced, dnsInfo.Err)
 		},
 		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
-			sess.LogFunc("* SSL HandshakeComplete: %v", state.HandshakeComplete)
+			sess.options.LogFunc("* SSL HandshakeComplete: %v", state.HandshakeComplete)
 		},
 		WroteRequest: func(reqInfo httptrace.WroteRequestInfo) {
 		},
@@ -299,13 +289,13 @@ func (sess *Session) DebugTrace(req *http.Request) (*http.Response, error) {
 	req2 := req.WithContext(ctx)
 	reqLog, err := DumpRequest(req2)
 	if err != nil {
-		sess.LogFunc("request error: %w", err)
+		sess.options.LogFunc("request error: %w", err)
 		return nil, err
 	}
 	resp, err := sess.Transport.RoundTrip(req2)
-	sess.LogFunc(show(reqLog, "> "))
+	sess.options.LogFunc(show(reqLog, "> "))
 	if err != nil {
-		sess.LogFunc("response error: %w", err)
+		sess.options.LogFunc("response error: %w", err)
 		return nil, err
 	}
 
@@ -313,6 +303,6 @@ func (sess *Session) DebugTrace(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	sess.LogFunc(show(respLog, "< "))
+	sess.options.LogFunc(show(respLog, "< "))
 	return resp, nil
 }
