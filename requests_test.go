@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -138,7 +139,9 @@ func Test_MockServer(t *testing.T) {
 		io.Copy(w, r.Body)
 	}))
 	defer s.Close()
-	sess := New()
+	sess := New().WithOption(Logf(func(ctx context.Context, stat Stat) {
+		fmt.Fprintf(os.Stdout, "%s\n", stat.String())
+	}))
 	resp, err := sess.DoRequest(context.Background(), URL(s.URL), Path("/234"), Trace(true))
 	//t.Logf("%T, %T", resp.Request, resp.Response.Request)
 	t.Logf("%#v, %v", resp.String(), err)

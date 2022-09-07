@@ -98,8 +98,8 @@ func (sess *Session) Proxy(addr string) error {
 }
 
 // Timeout set client timeout
-func (sess *Session) Timeout(timeout int) *Session {
-	sess.Client.Timeout = time.Duration(timeout) * time.Second
+func (sess *Session) Timeout(timeout time.Duration) *Session {
+	sess.Client.Timeout = timeout
 	return sess
 }
 
@@ -110,27 +110,40 @@ func (sess *Session) SetKeepAlives(keepAlives bool) *Session {
 	return sess
 }
 
-// DoRequest send a request and return a response
-func (sess *Session) DoRequest(ctx context.Context, opts ...Option) (*Response, error) {
+func (sess *Session) WithOption(opts ...Option) *Session {
 	sess.wg.Lock()
+	defer sess.wg.Unlock()
+	for _, o := range opts {
+		o(&sess.options)
+	}
+	return sess
+}
+
+func (sess *Session) copyOption(opts ...Option) Options {
+	sess.wg.Lock()
+	defer sess.wg.Unlock()
 	options := sess.options.Copy()
 	for _, o := range opts {
 		o(&options)
 	}
-	req, err := NewRequestWithContext(ctx, options)
-	sess.wg.Unlock()
+	return options
+}
 
-	resp := &Response{StartAt: time.Now(), Request: req, Err: err}
+// DoRequest send a request and return a response
+func (sess *Session) DoRequest(ctx context.Context, opts ...Option) (*Response, error) {
+	options, resp := sess.copyOption(opts...), &Response{StartAt: time.Now()}
 
-	if err != nil {
-		return nil, fmt.Errorf("request: %w", err)
+	resp.Request, resp.Err = NewRequestWithContext(ctx, options)
+	if resp.Err != nil {
+		return nil, fmt.Errorf("request: %w", resp.Err)
 	}
 
 	if options.Trace {
-		resp.Response, resp.Err = sess.DebugTrace(req)
+		resp.Response, resp.Err = sess.DebugTrace(resp.Request)
 	} else {
-		resp.Response, resp.Err = sess.Client.Do(req)
+		resp.Response, resp.Err = sess.Client.Do(resp.Request)
 	}
+
 	resp.unpack()
 	if options.Logf != nil {
 		options.Logf(ctx, resp.Stat())

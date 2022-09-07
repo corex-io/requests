@@ -167,9 +167,3 @@ func (resp *Response) JSON(v any) error {
 func (resp *Response) Dump() ([]byte, error) {
 	return httputil.DumpResponse(resp.Response, true)
 }
-
-// Copy deep copy response
-func (resp *Response) Copy() *Response {
-	resp2 := &Response{}
-	return resp2
-}
