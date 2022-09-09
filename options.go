@@ -3,27 +3,26 @@ package requests
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
+	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 )
 
 // Options request
 type Options struct {
-	Method  string         `json:"method"`
-	URL     string         `json:"url"`
-	Path    []string       `json:"path"`
-	Params  map[string]any `json:"params"`
-	Header  http.Header    `json:"headers"`
-	Cookies []http.Cookie  `json:"cookies"`
-	body    any
-	Timeout time.Duration `json:"timeout"`
-	Trace   bool          `json:"trace"`
-	Verify  bool          `json:"verify"`
-	LogFunc func(string, ...any)
-	Logf    func(ctx context.Context, stat Stat)
+	Method    string         `json:"method"`
+	URL       string         `json:"url"`
+	Path      []string       `json:"path"`
+	Params    map[string]any `json:"params"`
+	body      any
+	Header    http.Header   `json:"headers"`
+	Cookies   []http.Cookie `json:"cookies"`
+	Timeout   time.Duration `json:"timeout"`
+	Trace     bool          `json:"trace"`
+	Verify    bool          `json:"verify"`
+	Logf      func(ctx context.Context, stat Stat)
+	LocalAddr net.Addr
 }
 
 // Option func
@@ -36,9 +35,6 @@ func newOptions(opts ...Option) Options {
 		Params:  make(map[string]any),
 		Header:  make(http.Header),
 		Timeout: 30 * time.Second,
-		LogFunc: func(format string, v ...any) {
-			_, _ = fmt.Fprintf(os.Stderr, format+"\n", v...)
-		},
 	}
 	for _, o := range opts {
 		o(&opt)
@@ -167,21 +163,27 @@ func Logf(f func(context.Context, Stat)) Option {
 	}
 }
 
+func LocalAddr(addr net.Addr) Option {
+	return func(o *Options) {
+		o.LocalAddr = addr
+	}
+}
+
 // Copy copy
 func (opt Options) Copy() Options {
 	options := Options{
-		Method:  opt.Method,
-		URL:     opt.URL,
-		Path:    opt.Path,
-		Params:  opt.Params,
-		Header:  opt.Header,
-		Cookies: opt.Cookies,
-		body:    opt.body,
-		Timeout: opt.Timeout,
-		Trace:   opt.Trace,
-		Verify:  opt.Verify,
-		LogFunc: opt.LogFunc,
-		Logf:    opt.Logf,
+		Method:    opt.Method,
+		URL:       opt.URL,
+		Path:      opt.Path,
+		Params:    opt.Params,
+		Header:    opt.Header,
+		Cookies:   opt.Cookies,
+		body:      opt.body,
+		Timeout:   opt.Timeout,
+		Trace:     opt.Trace,
+		Verify:    opt.Verify,
+		Logf:      opt.Logf,
+		LocalAddr: opt.LocalAddr,
 	}
 	return options
 }

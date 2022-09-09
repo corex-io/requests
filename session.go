@@ -41,6 +41,7 @@ func New(opts ...Option) *Session {
 		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second, // 限制建立TCP连接的时间
 			KeepAlive: 300 * time.Second,
+			LocalAddr: options.LocalAddr,
 		}).DialContext,
 		MaxIdleConns: 100,
 		// TLSHandshakeTimeout:   10 * time.Second, // 限制 TLS握手的时间
@@ -263,29 +264,29 @@ func (sess *Session) Uploadmultipart(url, file string, fields map[string]string)
 func (sess *Session) DebugTrace(req *http.Request) (*http.Response, error) {
 	trace := &httptrace.ClientTrace{
 		GetConn: func(hostPort string) {
-			sess.options.LogFunc("* Connect: %v", hostPort)
+			Log("* Connect: %v", hostPort)
 		},
 		ConnectStart: func(network, addr string) {
-			sess.options.LogFunc("* Trying %v %v...", network, addr)
+			Log("* Trying %v %v...", network, addr)
 		},
 		ConnectDone: func(network, addr string, err error) {
-			sess.options.LogFunc("* Completed connection: %v %v, err=%v", network, addr, err)
+			Log("* Completed connection: %v %v, err=%v", network, addr, err)
 		},
 		GotConn: func(connInfo httptrace.GotConnInfo) {
-			sess.options.LogFunc("* Got Conn: %v -> %v", connInfo.Conn.LocalAddr(), connInfo.Conn.RemoteAddr())
+			Log("* Got Conn: %v -> %v", connInfo.Conn.LocalAddr(), connInfo.Conn.RemoteAddr())
 		},
 		DNSStart: func(dnsInfo httptrace.DNSStartInfo) {
-			sess.options.LogFunc("* Resolved Host: %v", dnsInfo.Host)
+			Log("* Resolved Host: %v", dnsInfo.Host)
 		},
 		DNSDone: func(dnsInfo httptrace.DNSDoneInfo) {
 			var ipaddrs []string
 			for _, ipaddr := range dnsInfo.Addrs {
 				ipaddrs = append(ipaddrs, ipaddr.String())
 			}
-			sess.options.LogFunc("* Resolved DNS: %v, Coalesced: %v, err=%v", ipaddrs, dnsInfo.Coalesced, dnsInfo.Err)
+			Log("* Resolved DNS: %v, Coalesced: %v, err=%v", ipaddrs, dnsInfo.Coalesced, dnsInfo.Err)
 		},
 		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
-			sess.options.LogFunc("* SSL HandshakeComplete: %v", state.HandshakeComplete)
+			Log("* SSL HandshakeComplete: %v", state.HandshakeComplete)
 		},
 		WroteRequest: func(reqInfo httptrace.WroteRequestInfo) {
 		},
@@ -295,13 +296,12 @@ func (sess *Session) DebugTrace(req *http.Request) (*http.Response, error) {
 	req2 := req.WithContext(ctx)
 	reqLog, err := DumpRequest(req2)
 	if err != nil {
-		sess.options.LogFunc("request error: %w", err)
+		Log("request error: %w", err)
 		return nil, err
 	}
 	resp, err := sess.Transport.RoundTrip(req2)
-	sess.options.LogFunc(show(reqLog, "> "))
+	Log(show(reqLog, "> "))
 	if err != nil {
-		sess.options.LogFunc("response error: %w", err)
 		return nil, err
 	}
 
@@ -309,6 +309,9 @@ func (sess *Session) DebugTrace(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	sess.options.LogFunc(show(respLog, "< "))
+	Log(show(respLog, "< "))
 	return resp, nil
+}
+func Log(format string, v ...any) {
+	_, _ = fmt.Fprintf(os.Stderr, format+"\n", v...)
 }
