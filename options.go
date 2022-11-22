@@ -171,19 +171,22 @@ func LocalAddr(addr net.Addr) Option {
 
 // Copy copy
 func (opt Options) Copy() Options {
-	options := Options{
-		Method:    opt.Method,
-		URL:       opt.URL,
-		Path:      opt.Path,
-		Params:    opt.Params,
-		Header:    opt.Header,
-		Cookies:   opt.Cookies,
-		body:      opt.body,
-		Timeout:   opt.Timeout,
-		Trace:     opt.Trace,
-		Verify:    opt.Verify,
-		Logf:      opt.Logf,
-		LocalAddr: opt.LocalAddr,
+	options := newOptions()
+	options.Method = opt.Method
+	options.URL = opt.URL
+	options.Path = append(options.Path, opt.Path...)
+	options.Cookies = append(options.Cookies, opt.Cookies...)
+	options.body = opt.body
+	options.Timeout = opt.Timeout
+	options.Trace = opt.Trace
+	options.Verify = opt.Verify
+	options.Logf = opt.Logf
+	options.LocalAddr = opt.LocalAddr
+	for k, v := range opt.Params {
+		options.Params[k] = v
+	}
+	for k, v := range opt.Header {
+		options.Header.Add(k, v[0])
 	}
 	return options
 }
