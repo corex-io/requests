@@ -2,13 +2,12 @@ package requests
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httputil"
 	"os"
 	"sync"
 	"time"
-
-	"encoding/json"
 )
 
 // Stat stats
