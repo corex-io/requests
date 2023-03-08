@@ -64,7 +64,7 @@ func (resp *Response) unpack() {
 }
 
 // Stat stat
-func (resp Response) Stat() Stat {
+func (resp *Response) Stat() Stat {
 
 	stat := Stat{
 		StartAt: resp.StartAt.Format("2006-01-02 15:04:05.000"),
@@ -122,11 +122,11 @@ func (resp Response) Stat() Stat {
 	return stat
 }
 
-func (resp Response) String() string {
+func (resp *Response) String() string {
 	return resp.Text()
 }
 
-func (resp Response) Error() string {
+func (resp *Response) Error() string {
 	if resp.Err == nil {
 		return ""
 	}

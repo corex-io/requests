@@ -24,7 +24,7 @@ func DumpRequestIndent(req *http.Request) string {
 	return b.String()
 }
 
-const maxTruncateBytes = 9999
+const maxTruncateBytes = 1024
 
 func show(b []byte, prompt string) string {
 	var buf bytes.Buffer

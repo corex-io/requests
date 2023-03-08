@@ -27,20 +27,18 @@ func Test_Basic(t *testing.T) {
 	//t.Log(resp.Text())
 }
 
-func Test_Get(t *testing.T) {
+func Test_ProxyGet(t *testing.T) {
 	t.Log("Testing get request")
 	sess := New(
 		Header("a", "b"),
 		Cookie(http.Cookie{Name: "username", Value: "golang"}),
 		BasicAuth("user", "123456"),
-		Timeout(1),
+		Timeout(3*time.Second),
+		Hosts(map[string][]string{"127.0.0.1:8080": {"192.168.1.1:80"}, "4.org:80": {"httpbin.org:80"}}),
+		//Proxy("http://127.0.0.1:8080"),
 	)
-	if err := sess.Proxy("http://127.0.0.1:8080"); err != nil {
-		t.Log(err)
-		return
-	}
 
-	resp, err := sess.DoRequest(context.Background(), Method("GET"), URL("http://4.org/get"), Trace(true))
+	resp, err := sess.DoRequest(context.Background(), Method("GET"), URL("http://httpbin.org"), TraceLv(9))
 	if err != nil {
 		t.Errorf("%s", err.Error())
 		return
@@ -52,16 +50,17 @@ func Test_Get(t *testing.T) {
 func Test_PostBody(t *testing.T) {
 	sess := New(
 		BasicAuth("user", "123456"),
-		//Logf(func(context.Context, Stat) {
-		//	fmt.Println("session")
-		//}),
+		Logf(func(context.Context, Stat) {
+			fmt.Println("session")
+
+		}),
 	)
 	//if err := sess.Proxy("127.0.0.1:8080"); err != nil {
 	//	t.Error(err)
 	//	return
 	//}
 
-	resp, err := sess.DoRequest(context.Background(),
+	resp, err := sess.DoRequest(context.Background(), Hosts(map[string][]string{"httpbin.org:80": {"aaa.com"}}),
 		Method("POST"),
 		URL("http://httpbin.org/post"),
 		Params(map[string]any{
@@ -71,10 +70,10 @@ func Test_PostBody(t *testing.T) {
 		}),
 		Body(`{"body":"QWER"}`),
 		Header("hello", "world"),
-		Trace(true),
-		Logf(func(ctx context.Context, stat Stat) {
-			fmt.Println("request")
-		}),
+		TraceLv(9),
+		//Logf(func(ctx context.Context, stat Stat) {
+		//	fmt.Println(stat)
+		//}),
 	)
 	if err != nil {
 		t.Logf("%v", err)
@@ -98,7 +97,7 @@ func Test_FormPost(t *testing.T) {
 			"c": 3,
 			"d": []int{1, 2, 3},
 		}),
-		Trace(true),
+		TraceLv(9),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -142,7 +141,7 @@ func Test_MockServer(t *testing.T) {
 	sess := New().WithOption(Logf(func(ctx context.Context, stat Stat) {
 		fmt.Fprintf(os.Stdout, "%s\n", stat.String())
 	}))
-	resp, err := sess.DoRequest(context.Background(), URL(s.URL), Path("/234"), Trace(true))
+	resp, err := sess.DoRequest(context.Background(), URL(s.URL), Path("/234"), TraceLv(9))
 	//t.Logf("%T, %T", resp.Request, resp.Response.Request)
 	t.Logf("%#v, %v", resp.String(), err)
 }

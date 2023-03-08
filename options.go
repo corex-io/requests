@@ -11,18 +11,22 @@ import (
 
 // Options request
 type Options struct {
-	Method    string         `json:"method"`
-	URL       string         `json:"url"`
-	Path      []string       `json:"path"`
-	Params    map[string]any `json:"params"`
-	body      any
-	Header    http.Header   `json:"headers"`
-	Cookies   []http.Cookie `json:"cookies"`
-	Timeout   time.Duration `json:"timeout"`
-	Trace     bool          `json:"trace"`
-	Verify    bool          `json:"verify"`
-	Logf      func(ctx context.Context, stat Stat)
+	Method  string         `json:"method"`
+	URL     string         `json:"url"`
+	Path    []string       `json:"path"`
+	Params  map[string]any `json:"params"`
+	body    any
+	Header  http.Header   `json:"headers"`
+	Cookies []http.Cookie `json:"cookies"`
+	Timeout time.Duration `json:"timeout"`
+	TraceLv int           `json:"trace"`
+	Verify  bool          `json:"verify"`
+	Logf    func(ctx context.Context, stat Stat)
+
+	// session used
 	LocalAddr net.Addr
+	Hosts     map[string][]string // 内部host文件
+	Proxy     func(*http.Request) (*url.URL, error)
 }
 
 // Option func
@@ -35,6 +39,8 @@ func newOptions(opts ...Option) Options {
 		Params:  make(map[string]any),
 		Header:  make(http.Header),
 		Timeout: 30 * time.Second,
+		Hosts:   make(map[string][]string),
+		Proxy:   http.ProxyFromEnvironment,
 	}
 	for _, o := range opts {
 		o(&opt)
@@ -136,17 +142,17 @@ func BasicAuth(user, pass string) Option {
 
 }
 
-// Timeout timeout, Millisecond 毫秒
+// Timeout client timeout duration
 func Timeout(timeout time.Duration) Option {
 	return func(o *Options) {
 		o.Timeout = timeout
 	}
 }
 
-// Trace Trace
-func Trace(trace bool) Option {
+// TraceLv Trace
+func TraceLv(v int) Option {
 	return func(o *Options) {
-		o.Trace = trace
+		o.TraceLv = v
 	}
 }
 
@@ -169,7 +175,27 @@ func LocalAddr(addr net.Addr) Option {
 	}
 }
 
-// Copy copy
+// Hosts 自定义Host配置，参数只能在session级别生效，格式：<host:port>
+// 如果存在proxy服务，只能解析代理服务，不能解析url地址
+func Hosts(hosts map[string][]string) Option {
+	return func(o *Options) {
+		o.Hosts = hosts
+	}
+}
+
+// Proxy set proxy addr
+// os.Setenv("HTTP_PROXY", "http://127.0.0.1:9743")
+// os.Setenv("HTTPS_PROXY", "https://127.0.0.1:9743")
+// https://stackoverflow.com/questions/14661511/setting-up-proxy-for-http-client
+func Proxy(addr string) Option {
+	return func(o *Options) {
+		if proxyURL, err := url.Parse(addr); err == nil {
+			o.Proxy = http.ProxyURL(proxyURL)
+		}
+	}
+}
+
+// Copy options
 func (opt Options) Copy() Options {
 	options := newOptions()
 	options.Method = opt.Method
@@ -178,7 +204,7 @@ func (opt Options) Copy() Options {
 	options.Cookies = append(options.Cookies, opt.Cookies...)
 	options.body = opt.body
 	options.Timeout = opt.Timeout
-	options.Trace = opt.Trace
+	options.TraceLv = opt.TraceLv
 	options.Verify = opt.Verify
 	options.Logf = opt.Logf
 	options.LocalAddr = opt.LocalAddr
