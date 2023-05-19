@@ -1,8 +1,11 @@
 package requests
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/base64"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -95,6 +98,28 @@ func Param(k string, v any) Option {
 func Body(body any) Option {
 	return func(o *Options) {
 		o.body = body
+	}
+}
+
+// Gzip request gzip compressed
+func Gzip(body any) Option {
+	reader, err := makeBody(body)
+	if err != nil {
+		panic(err)
+	}
+
+	var buf bytes.Buffer
+	w := gzip.NewWriter(&buf)
+	defer w.Close()
+
+	if _, err := io.Copy(w, reader); err != nil {
+		panic(err)
+	}
+
+	return func(o *Options) {
+		o.body = &buf
+		o.Header.Add("Accept-Encoding", "gzip")
+		o.Header.Add("Content-Encoding", "gzip")
 	}
 }
 

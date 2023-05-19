@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-func bodyReader(body any) (io.Reader, error) {
+func makeBody(body any) (io.Reader, error) {
 	if body == nil {
 		return nil, nil
 	}
@@ -37,7 +37,7 @@ func bodyReader(body any) (io.Reader, error) {
 
 // NewRequestWithContext request
 func NewRequestWithContext(ctx context.Context, opt Options) (*http.Request, error) {
-	reader, err := bodyReader(opt.body)
+	reader, err := makeBody(opt.body)
 	if err != nil {
 		return nil, err
 	}
