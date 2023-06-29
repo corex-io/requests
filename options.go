@@ -14,17 +14,18 @@ import (
 
 // Options request
 type Options struct {
-	Method  string         `json:"method"`
-	URL     string         `json:"url"`
-	Path    []string       `json:"path"`
-	Params  map[string]any `json:"params"`
-	body    any
-	Header  http.Header   `json:"headers"`
-	Cookies []http.Cookie `json:"cookies"`
-	Timeout time.Duration `json:"timeout"`
-	TraceLv int           `json:"trace"`
-	Verify  bool          `json:"verify"`
-	Logf    func(ctx context.Context, stat Stat)
+	Method     string
+	URL        string
+	Path       []string
+	Params     map[string]any
+	body       any
+	Header     http.Header
+	Cookies    []http.Cookie
+	Timeout    time.Duration
+	TraceLv    int
+	TraceLimit int
+	Verify     bool
+	Logf       func(ctx context.Context, stat Stat)
 
 	// session used
 	LocalAddr net.Addr
@@ -38,12 +39,13 @@ type Option func(*Options)
 // NewOptions new request
 func newOptions(opts ...Option) Options {
 	opt := Options{
-		Method:  "GET",
-		Params:  make(map[string]any),
-		Header:  make(http.Header),
-		Timeout: 30 * time.Second,
-		Hosts:   make(map[string][]string),
-		Proxy:   http.ProxyFromEnvironment,
+		Method:     "GET",
+		Params:     make(map[string]any),
+		Header:     make(http.Header),
+		Timeout:    30 * time.Second,
+		Hosts:      make(map[string][]string),
+		Proxy:      http.ProxyFromEnvironment,
+		TraceLimit: 1024,
 	}
 	for _, o := range opts {
 		o(&opt)
@@ -175,9 +177,12 @@ func Timeout(timeout time.Duration) Option {
 }
 
 // TraceLv Trace
-func TraceLv(v int) Option {
+func TraceLv(v int, limit ...int) Option {
 	return func(o *Options) {
 		o.TraceLv = v
+		if len(limit) != 0 {
+			o.TraceLimit = limit[0]
+		}
 	}
 }
 

@@ -121,7 +121,7 @@ var trace = &httptrace.ClientTrace{
 }
 
 // DebugTrace trace a request
-func (s *Session) DebugTrace(req *http.Request, v int) (*http.Response, error) {
+func (s *Session) DebugTrace(req *http.Request, v int, limit int) (*http.Response, error) {
 	ctx := httptrace.WithClientTrace(req.Context(), trace)
 	req2 := req.WithContext(ctx)
 	reqLog, err := DumpRequest(req2)
@@ -131,7 +131,7 @@ func (s *Session) DebugTrace(req *http.Request, v int) (*http.Response, error) {
 	}
 	resp, err := s.Transport.RoundTrip(req2)
 	if v >= 2 {
-		Log(show(reqLog, "> "))
+		Log(show(reqLog, "> ", limit))
 	}
 	if err != nil {
 		return nil, err
@@ -142,7 +142,7 @@ func (s *Session) DebugTrace(req *http.Request, v int) (*http.Response, error) {
 		return nil, err
 	}
 	if v >= 3 {
-		Log(show(respLog, "< "))
+		Log(show(respLog, "< ", limit))
 	}
 	return resp, nil
 }

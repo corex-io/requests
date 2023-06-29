@@ -143,7 +143,7 @@ func (s *Session) DoRequest(ctx context.Context, opts ...Option) (*Response, err
 	//}
 
 	if options.TraceLv != 0 {
-		resp.Response, resp.Err = s.DebugTrace(resp.Request, options.TraceLv)
+		resp.Response, resp.Err = s.DebugTrace(resp.Request, options.TraceLv, options.TraceLimit)
 	} else {
 		resp.Response, resp.Err = s.Client.Do(resp.Request)
 	}

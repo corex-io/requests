@@ -24,9 +24,7 @@ func DumpRequestIndent(req *http.Request) string {
 	return b.String()
 }
 
-const maxTruncateBytes = 1024
-
-func show(b []byte, prompt string) string {
+func show(b []byte, prompt string, maxTruncateBytes int) string {
 	var buf bytes.Buffer
 	for _, line := range bytes.Split(b, []byte("\n")) {
 		buf.Write([]byte(prompt))
@@ -35,7 +33,7 @@ func show(b []byte, prompt string) string {
 	}
 	str := buf.String()
 	if len(str) > maxTruncateBytes {
-		return fmt.Sprintf("%s...[Len=%d, Truncated]", str[:maxTruncateBytes], len(str))
+		return fmt.Sprintf("%s...[Len=%d, Truncated[%d]]", str[:maxTruncateBytes], len(str), maxTruncateBytes)
 	}
 	return str
 }

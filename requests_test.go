@@ -141,12 +141,12 @@ func Test_MockServer(t *testing.T) {
 	sess := New().WithOption(Logf(func(ctx context.Context, stat Stat) {
 		fmt.Fprintf(os.Stdout, "%s\n", stat.String())
 	}))
-	resp, err := sess.DoRequest(context.Background(), URL(s.URL), Path("/234"), TraceLv(9))
+	resp, err := sess.DoRequest(context.Background(), URL(s.URL), Path("/234"), Body("112222"), TraceLv(9, 100))
 	//t.Logf("%T, %T", resp.Request, resp.Response.Request)
 	t.Logf("%#v, %v", resp.String(), err)
 }
 
-//  go test -v -test.bench=Benchmark_Request -test.run=Benchmark_Request -benchmem --race
+// go test -v -test.bench=Benchmark_Request -test.run=Benchmark_Request -benchmem --race
 func Benchmark_Request(b *testing.B) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		io.Copy(w, r.Body)
