@@ -22,6 +22,7 @@ type Options struct {
 	Header     http.Header
 	Cookies    []http.Cookie
 	Timeout    time.Duration
+	MaxConns   int
 	TraceLv    int
 	TraceLimit int
 	Verify     bool
@@ -43,6 +44,7 @@ func newOptions(opts ...Option) Options {
 		Params:     make(map[string]any),
 		Header:     make(http.Header),
 		Timeout:    30 * time.Second,
+		MaxConns:   100,
 		Hosts:      make(map[string][]string),
 		Proxy:      http.ProxyFromEnvironment,
 		TraceLimit: 1024,
@@ -58,6 +60,13 @@ var (
 	MethodGet  = Method("GET")
 	MethodPost = Method("POST")
 )
+
+// MaxConns set max connections
+func MaxConns(conn int) Option {
+	return func(o *Options) {
+		o.MaxConns = conn
+	}
+}
 
 // Method set method
 func Method(method string) Option {
@@ -234,6 +243,7 @@ func (opt Options) Copy() Options {
 	options.Cookies = append(options.Cookies, opt.Cookies...)
 	options.body = opt.body
 	options.Timeout = opt.Timeout
+	options.MaxConns = opt.MaxConns
 	options.TraceLv = opt.TraceLv
 	options.Verify = opt.Verify
 	options.Logf = opt.Logf

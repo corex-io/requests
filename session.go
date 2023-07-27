@@ -46,9 +46,17 @@ func New(opts ...Option) *Session {
 			}
 			return dialer.DialContext(ctx, network, addr)
 		},
-		MaxIdleConns: 100,
+		MaxIdleConns: options.MaxConns, // 设置连接池的大小为100个连接
+
+		// 默认的DefaultMaxIdleConnsPerHost = 2 这个设置意思时尽管整个连接池是100个连接，但是每个host只有2个。
+		// 上面的例子中有100个gooutine尝试并发的对同一个主机发起http请求，但是连接池只能存放两个连接。
+		// 所以，第一轮完成请求时，2个连接保持打开状态。但是剩下的98个连接将会被关闭并进入TIME_WAIT状态。
+		// 因为这在一个循环中出现，所以会很快就积累上成千上万的TIME_WAIT状态的连接。
+		// 最终，会耗尽主机的所有可用端口，从而导致无法打开新的连接。
+		MaxIdleConnsPerHost: options.MaxConns,  // 设置每个Host最大的空闲链接
+		IdleConnTimeout:     120 * time.Second, // 意味着一个连接在连接池里最多保持120秒的空闲时间，超过这个时间将会被移除并关闭
+
 		// TLSHandshakeTimeout:   10 * time.Second, // 限制 TLS握手的时间
-		// IdleConnTimeout:       120 * time.Second,
 		// ResponseHeaderTimeout: 60 * time.Second, // 限制读取response header的时间
 		DisableCompression: true,
 		DisableKeepAlives:  false,
