@@ -27,6 +27,7 @@ type Options struct {
 	TraceLimit int
 	Verify     bool
 	Logf       func(ctx context.Context, stat Stat)
+	Stream     func(b []byte) error
 
 	// session used
 	LocalAddr net.Addr
@@ -214,6 +215,12 @@ func LocalAddr(addr net.Addr) Option {
 	}
 }
 
+func Stream(stream func([]byte) error) Option {
+	return func(o *Options) {
+		o.Stream = stream
+	}
+}
+
 // Hosts 自定义Host配置，参数只能在session级别生效，格式：<host:port>
 // 如果存在proxy服务，只能解析代理服务，不能解析url地址
 func Hosts(hosts map[string][]string) Option {
@@ -248,6 +255,7 @@ func (opt Options) Copy() Options {
 	options.Verify = opt.Verify
 	options.Logf = opt.Logf
 	options.LocalAddr = opt.LocalAddr
+	options.Stream = opt.Stream
 	for k, v := range opt.Params {
 		options.Params[k] = v
 	}

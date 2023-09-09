@@ -3,7 +3,6 @@ package requests
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -62,7 +61,7 @@ func DownloadFile(url string, progress bool, filepath ...string) error {
 	}
 
 	// Create the file with .tmp extension, so that we won't overwrite a file until it's downloaded fully
-	tmpfile, err := ioutil.TempFile(".", "download-")
+	tmpfile, err := os.CreateTemp(".", "download-")
 	if err != nil {
 		return err
 	}

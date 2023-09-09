@@ -139,16 +139,12 @@ func (s *Session) copyOption(opts ...Option) Options {
 
 // DoRequest send a request and return a response
 func (s *Session) DoRequest(ctx context.Context, opts ...Option) (*Response, error) {
-	options, resp := s.copyOption(opts...), &Response{StartAt: time.Now()}
+	options, resp := s.copyOption(opts...), Response{StartAt: time.Now()}
 
 	resp.Request, resp.Err = NewRequestWithContext(ctx, options)
 	if resp.Err != nil {
 		return nil, fmt.Errorf("request: %w", resp.Err)
 	}
-
-	//if options.Trace {
-	//	resp.Request = resp.Request.WithContext(httptrace.WithClientTrace(resp.Request.Context(), trace))
-	//}
 
 	if options.TraceLv != 0 {
 		resp.Response, resp.Err = s.DebugTrace(resp.Request, options.TraceLv, options.TraceLimit)
@@ -156,11 +152,24 @@ func (s *Session) DoRequest(ctx context.Context, opts ...Option) (*Response, err
 		resp.Response, resp.Err = s.Client.Do(resp.Request)
 	}
 
-	resp.unpack()
+	if resp.Response == nil || resp.Response.Body == nil {
+		resp.Err = fmt.Errorf("resp.Body is nil")
+		return &resp, resp.Err
+	}
+
+	defer resp.Response.Body.Close()
+
+	if options.Stream != nil {
+		resp.Response.ContentLength, resp.Err = resp.stream(options.Stream)
+	} else {
+		resp.Response.ContentLength, resp.Err = resp.body.ReadFrom(resp.Response.Body)
+	}
+
+	resp.Cost = time.Since(resp.StartAt)
 	if options.Logf != nil {
 		options.Logf(ctx, resp.Stat())
 	}
-	return resp, resp.Err
+	return &resp, resp.Err
 }
 
 // Do http request

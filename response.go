@@ -1,12 +1,13 @@
 package requests
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"os"
-	"sync"
 	"time"
 )
 
@@ -45,21 +46,6 @@ type Response struct {
 	Retry   int
 	body    bytes.Buffer
 	Err     error
-
-	once sync.Once
-}
-
-func (resp *Response) unpack() {
-	resp.once.Do(func() {
-		defer func() {
-			resp.Cost = time.Since(resp.StartAt)
-		}()
-		if resp.Response == nil || resp.Response.Body == nil {
-			return
-		}
-		defer resp.Response.Body.Close()
-		resp.Response.ContentLength, resp.Err = resp.body.ReadFrom(resp.Response.Body)
-	})
 }
 
 // Stat stat
@@ -165,4 +151,21 @@ func (resp *Response) JSON(v any) error {
 // Dump returns the given request in its HTTP/1.x wire representation.
 func (resp *Response) Dump() ([]byte, error) {
 	return httputil.DumpResponse(resp.Response, true)
+}
+
+func (resp *Response) stream(f func([]byte) error) (int64, error) {
+	cnt, reader := int64(0), bufio.NewReaderSize(resp.Response.Body, 1024*1024)
+	for {
+		b, err := reader.ReadBytes('\n')
+		if err != nil {
+			if err != io.EOF {
+				return cnt, err
+			}
+			return cnt, nil
+		}
+		cnt += int64(len(b))
+		if err = f(b); err != nil {
+			return cnt, err
+		}
+	}
 }

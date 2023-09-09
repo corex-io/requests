@@ -190,3 +190,14 @@ func Test_Cannel(t *testing.T) {
 	resp, err := sess.DoRequest(ctx, URL("http://127.0.0.1:9099"))
 	t.Logf("%s, err=%v", resp.Stat(), err)
 }
+
+func Test_Stream(t *testing.T) {
+	body := `{}`
+	s := New(URL("http://127.0.0.1:80/stream"), Body(body))
+	resp, err := s.DoRequest(context.Background(), Method("POST"), Header("Content-Type", "application/json"), Stream(func(b []byte) error {
+		//fmt.Print(string(b))
+		return nil
+	}), TraceLv(3))
+	t.Logf("%v, err=%v", resp.Stat(), err)
+
+}
