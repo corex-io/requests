@@ -152,6 +152,10 @@ func (s *Session) DoRequest(ctx context.Context, opts ...Option) (*Response, err
 		resp.Response, resp.Err = s.Client.Do(resp.Request)
 	}
 
+	if resp.Err != nil {
+		return nil, fmt.Errorf("doRequest: %w", resp.Err)
+	}
+
 	if resp.Response == nil || resp.Response.Body == nil {
 		resp.Err = fmt.Errorf("resp.Body is nil")
 		return &resp, resp.Err
