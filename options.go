@@ -215,7 +215,7 @@ func LocalAddr(addr net.Addr) Option {
 	}
 }
 
-func Stream(stream func([]byte) error) Option {
+func Stream(stream func(int64, []byte) error) Option {
 	return func(o *Options) {
 		o.Stream = stream
 	}
