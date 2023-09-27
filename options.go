@@ -27,7 +27,7 @@ type Options struct {
 	TraceLimit int
 	Verify     bool
 	Logf       func(ctx context.Context, stat Stat)
-	Stream     func(b []byte) error
+	Stream     func(int64, []byte) error
 
 	// session used
 	LocalAddr net.Addr
