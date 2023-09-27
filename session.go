@@ -141,9 +141,14 @@ func (s *Session) copyOption(opts ...Option) Options {
 func (s *Session) DoRequest(ctx context.Context, opts ...Option) (*Response, error) {
 	options, resp := s.copyOption(opts...), Response{StartAt: time.Now()}
 
+	resp.Cost = time.Since(resp.StartAt)
+	if options.Logf != nil {
+		options.Logf(ctx, resp.Stat())
+	}
+
 	resp.Request, resp.Err = NewRequestWithContext(ctx, options)
 	if resp.Err != nil {
-		return nil, fmt.Errorf("request: %w", resp.Err)
+		return &resp, fmt.Errorf("request: %w", resp.Err)
 	}
 
 	if options.TraceLv != 0 {
@@ -153,7 +158,7 @@ func (s *Session) DoRequest(ctx context.Context, opts ...Option) (*Response, err
 	}
 
 	if resp.Err != nil {
-		return nil, fmt.Errorf("doRequest: %w", resp.Err)
+		return &resp, fmt.Errorf("doRequest: %w", resp.Err)
 	}
 
 	if resp.Response == nil || resp.Response.Body == nil {
@@ -169,10 +174,6 @@ func (s *Session) DoRequest(ctx context.Context, opts ...Option) (*Response, err
 		resp.Response.ContentLength, resp.Err = resp.body.ReadFrom(resp.Response.Body)
 	}
 
-	resp.Cost = time.Since(resp.StartAt)
-	if options.Logf != nil {
-		options.Logf(ctx, resp.Stat())
-	}
 	return &resp, resp.Err
 }
 
