@@ -141,14 +141,16 @@ func (s *Session) copyOption(opts ...Option) Options {
 func (s *Session) DoRequest(ctx context.Context, opts ...Option) (*Response, error) {
 	options, resp := s.copyOption(opts...), Response{StartAt: time.Now()}
 
-	resp.Cost = time.Since(resp.StartAt)
-	if options.Logf != nil {
-		options.Logf(ctx, resp.Stat())
-	}
+	defer func(resp *Response) {
+		resp.Cost = time.Since(resp.StartAt)
+		if options.Logf != nil {
+			options.Logf(ctx, resp.Stat())
+		}
+	}(&resp)
 
 	resp.Request, resp.Err = NewRequestWithContext(ctx, options)
 	if resp.Err != nil {
-		return &resp, fmt.Errorf("request: %w", resp.Err)
+		return &resp, fmt.Errorf("newRequest: %w", resp.Err)
 	}
 
 	if options.TraceLv != 0 {

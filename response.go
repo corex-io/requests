@@ -123,12 +123,12 @@ func (resp *Response) StdLib() *http.Response {
 	return resp.Response
 }
 
-// Text parse parse to string
+// Text parse to string
 func (resp *Response) Text() string {
 	return resp.body.String()
 }
 
-// Bytes bytes
+// Bytes to bytes
 func (resp *Response) Bytes() []byte {
 	return resp.body.Bytes()
 }
@@ -153,7 +153,7 @@ func (resp *Response) Dump() ([]byte, error) {
 	return httputil.DumpResponse(resp.Response, true)
 }
 
-func (resp *Response) stream(f func([]byte) error) (int64, error) {
+func (resp *Response) stream(f func(int64, []byte) error) (int64, error) {
 	cnt, reader := int64(0), bufio.NewReaderSize(resp.Response.Body, 1024*1024)
 	for {
 		b, err := reader.ReadBytes('\n')
@@ -164,7 +164,7 @@ func (resp *Response) stream(f func([]byte) error) (int64, error) {
 			return cnt, nil
 		}
 		cnt += int64(len(b))
-		if err = f(b); err != nil {
+		if err = f(cnt, b); err != nil {
 			return cnt, err
 		}
 	}
