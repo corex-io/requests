@@ -35,6 +35,13 @@ func makeBody(body any) (io.Reader, error) {
 	}
 }
 
+type Request http.Request
+
+func (request *Request) MarshalJSON(v any) ([]byte, error) {
+	// TODO
+	panic("TODO")
+}
+
 // NewRequestWithContext request
 func NewRequestWithContext(ctx context.Context, opt Options) (*http.Request, error) {
 	reader, err := makeBody(opt.body)

@@ -40,19 +40,21 @@ func (stat Stat) String() string {
 // Response wrap std response
 type Response struct {
 	*http.Response
-	*http.Request
-	StartAt time.Time
-	Cost    time.Duration
-	Retry   int
-	body    bytes.Buffer
-	Err     error
+	*http.Request // 这里是为了，保证存在请求发起失败的情况下，response=nil，request还能获取到原始记录
+	StartAt       time.Time
+	Cost          time.Duration
+	body          bytes.Buffer
+	Retry         int
+	Err           error
 }
+
+const dateTime = "2006-01-02 15:04:05.000"
 
 // Stat stat
 func (resp *Response) Stat() Stat {
 
 	stat := Stat{
-		StartAt: resp.StartAt.Format("2006-01-02 15:04:05.000"),
+		StartAt: resp.StartAt.Format(dateTime),
 		Cost:    resp.Cost.Milliseconds(),
 	}
 
@@ -143,7 +145,8 @@ func (resp *Response) Download(name string) (int, error) {
 	return f.Write(resp.body.Bytes())
 }
 
-// JSON parse response
+// JSON parse response.
+// Deprecated: DO NOT USE IT. Because it's not compatible with the standard library.
 func (resp *Response) JSON(v any) error {
 	return json.Unmarshal(resp.body.Bytes(), v)
 }
@@ -154,17 +157,17 @@ func (resp *Response) Dump() ([]byte, error) {
 }
 
 func (resp *Response) stream(f func(int64, []byte) error) (int64, error) {
-	cnt, reader := int64(0), bufio.NewReaderSize(resp.Response.Body, 1024*1024)
+	i, cnt, reader := int64(0), int64(0), bufio.NewReaderSize(resp.Response.Body, 1024*1024)
 	for {
-		b, err := reader.ReadBytes('\n')
+		raw, err := reader.ReadBytes(10) // ascii('\n') = 10
 		if err != nil {
 			if err != io.EOF {
 				return cnt, err
 			}
 			return cnt, nil
 		}
-		cnt += int64(len(b))
-		if err = f(cnt, b); err != nil {
+		i, cnt = i+1, cnt+int64(len(raw))
+		if err = f(i, raw); err != nil {
 			return cnt, err
 		}
 	}

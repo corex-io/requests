@@ -8,17 +8,17 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 )
 
-func Test_Download(t *testing.T) {
-	t.Log("Testing Download")
-	err := DownloadFile("https://github.com/prometheus/prometheus/releases/download/v2.12.0/prometheus-2.12.0.linux-amd64.tar.gz", true)
-	t.Log(err)
-}
+//func Test_Download(t *testing.T) {
+//	t.Log("Testing Download")
+//	err := DownloadFile("https://github.com/prometheus/prometheus/releases/download/v2.12.0/prometheus-2.12.0.linux-amd64.tar.gz", true)
+//	t.Log(err)
+//}
 
 func Test_Basic(t *testing.T) {
 	resp, err := Get("http://127.0.0.1:12345/get")
@@ -138,12 +138,21 @@ func Test_MockServer(t *testing.T) {
 		io.Copy(w, r.Body)
 	}))
 	defer s.Close()
-	sess := New().WithOption(Logf(func(ctx context.Context, stat Stat) {
-		fmt.Fprintf(os.Stdout, "%s\n", stat.String())
-	}))
-	resp, err := sess.DoRequest(context.Background(), URL(s.URL), Path("/234"), Body("112222"), TraceLv(9, 100))
-	//t.Logf("%T, %T", resp.Request, resp.Response.Request)
-	t.Logf("%#v, %v", resp.String(), err)
+	sess := New(Hosts(map[string][]string{"qq.com:80": []string{"127.0.0.1"}}))
+	resp, err := sess.DoRequest(context.Background(),
+		URL("http://qq.com:80"), Path("/234"),
+		//Body(map[string]string{"hello": "world"}),
+		Body(strings.NewReader("12345678")),
+		TraceLv(3, 102400),
+		Logf(func(ctx context.Context, stat Stat) {
+			t.Logf("%s\n", stat.String())
+		}),
+	)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	t.Logf("%#v, %v", resp, err)
 }
 
 // go test -v -test.bench=Benchmark_Request -test.run=Benchmark_Request -benchmem --race

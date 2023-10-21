@@ -43,6 +43,10 @@ func New(opts ...Option) *Session {
 				Timeout:   10 * time.Second, // 限制建立TCP连接的时间
 				KeepAlive: 60 * time.Second,
 				LocalAddr: options.LocalAddr,
+				Resolver: &net.Resolver{
+					PreferGo:     true,
+					StrictErrors: false,
+				},
 			}
 			return dialer.DialContext(ctx, network, addr)
 		},
