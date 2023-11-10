@@ -141,7 +141,9 @@ func (resp *Response) Download(name string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer f.Close()
+	defer func(f *os.File) {
+		_ = f.Close()
+	}(f)
 	return f.Write(resp.body.Bytes())
 }
 

@@ -35,41 +35,41 @@ func makeBody(body any) (io.Reader, error) {
 	}
 }
 
-type Request http.Request
-
-func (request *Request) MarshalJSON(v any) ([]byte, error) {
-	// TODO
-	panic("TODO")
-}
-
 // NewRequestWithContext request
-func NewRequestWithContext(ctx context.Context, opt Options) (*http.Request, error) {
-	reader, err := makeBody(opt.body)
+func NewRequestWithContext(ctx context.Context, options Options) (*http.Request, error) {
+	body, err := makeBody(options.body)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, opt.Method, opt.URL, reader)
+	req, err := http.NewRequestWithContext(ctx, options.Method, options.URL, body)
 	if err != nil {
 		return nil, err
 	}
 
 	// req.URL.Path = path.Join(req.URL.Path, path.Join(opt.Path...))
-	for _, path := range opt.Path {
+	for _, path := range options.Path {
 		req.URL.Path += path
 	}
 
-	for k, v := range opt.Params {
+	for k, v := range options.Params {
 		if req.URL.RawQuery != "" {
 			req.URL.RawQuery += "&"
 		}
 		req.URL.RawQuery += k + "=" + url.QueryEscape(fmt.Sprintf("%v", v))
 	}
 
-	req.Header = opt.Header
+	req.Header = options.Header
 
-	for _, cookie := range opt.Cookies {
+	for _, cookie := range options.Cookies {
 		req.AddCookie(&cookie)
 	}
+
+	for _, each := range options.RequestEach {
+		if err := each(req); err != nil {
+			return req, fmt.Errorf("requestEach: %w", err)
+		}
+	}
+
 	return req, nil
 }

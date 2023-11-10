@@ -29,6 +29,9 @@ type Options struct {
 	Logf       func(ctx context.Context, stat Stat)
 	Stream     func(int64, []byte) error
 
+	RequestEach  []func(*http.Request) error
+	ResponseEach []any
+
 	// session used
 	LocalAddr net.Addr
 	Hosts     map[string][]string // 内部host文件
@@ -221,6 +224,12 @@ func Stream(stream func(int64, []byte) error) Option {
 	}
 }
 
+func RequestEach(each ...func(*http.Request) error) Option {
+	return func(o *Options) {
+		o.RequestEach = each
+	}
+}
+
 // Hosts 自定义Host配置，参数只能在session级别生效，格式：<host:port>
 // 如果存在proxy服务，只能解析代理服务，不能解析url地址
 func Hosts(hosts map[string][]string) Option {
@@ -262,5 +271,6 @@ func (opt Options) Copy() Options {
 	for k, v := range opt.Header {
 		options.Header.Add(k, v[0])
 	}
+	options.RequestEach = append(options.RequestEach, opt.RequestEach...)
 	return options
 }

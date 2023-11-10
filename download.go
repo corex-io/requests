@@ -15,6 +15,7 @@ type WriteCounter struct {
 	Total uint64
 }
 
+// Write xx
 func (wc *WriteCounter) Write(p []byte) (int, error) {
 	n := len(p)
 	wc.Total += uint64(n)
@@ -23,7 +24,7 @@ func (wc *WriteCounter) Write(p []byte) (int, error) {
 }
 
 // PrintProgress prints the progress of a file write
-func (wc WriteCounter) PrintProgress() {
+func (wc *WriteCounter) PrintProgress() {
 	// Clear the line by using a character return to go back to the start and remove
 	// the remaining characters by filling it with spaces
 	fmt.Printf("\r%s", strings.Repeat(" ", 50))

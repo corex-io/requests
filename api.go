@@ -13,17 +13,17 @@ func Get(url string) (*Response, error) {
 }
 
 // Post send post request
-func Post(url, contentType string, body io.Reader) (*Response, error) {
+func Post(url string, contentType string, body io.Reader) (*Response, error) {
 	return sess.Post(url, contentType, body)
 }
 
 // PUT send put request
-func PUT(url, contentType string, body io.Reader) (resp *Response, err error) {
+func PUT(url, contentType string, body io.Reader) (*Response, error) {
 	return sess.Put(url, contentType, body)
 }
 
 // Delete send delete request
-func Delete(url, contentType string, body io.Reader) (resp *Response, err error) {
+func Delete(url, contentType string, body io.Reader) (*Response, error) {
 	return sess.Delete(url, contentType, body)
 }
 
@@ -33,7 +33,7 @@ func Head(url string) (resp *Response, err error) {
 }
 
 // PostForm send post request,  content-type = application/x-www-form-urlencoded
-func PostForm(url string, data url.Values) (resp *Response, err error) {
+func PostForm(url string, data url.Values) (*Response, error) {
 	return sess.PostForm(url, data)
 }
 

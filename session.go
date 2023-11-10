@@ -264,7 +264,9 @@ func (s *Session) Uploadmultipart(url, file string, fields map[string]string) (*
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func(f *os.File) {
+		_ = f.Close()
+	}(f)
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)

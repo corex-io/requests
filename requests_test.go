@@ -127,7 +127,7 @@ func Test_Race(t *testing.T) {
 	sess := New(URL("http://httpbin.org/post")) //, Auth("user", "123456"))
 	for i := 0; i < 10; i++ {
 		go func() {
-			sess.DoRequest(ctx, MethodPost, Body(`{"a":"b"}`), Params(map[string]any{"1": "2/2"})) // nolint: errcheck
+			_, _ = sess.DoRequest(ctx, MethodPost, Body(`{"a":"b"}`), Params(map[string]any{"1": "2/2"})) // nolint: errcheck
 		}()
 	}
 	time.Sleep(3 * time.Second)
@@ -135,10 +135,10 @@ func Test_Race(t *testing.T) {
 
 func Test_MockServer(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.Copy(w, r.Body)
+		_, _ = io.Copy(w, r.Body)
 	}))
 	defer s.Close()
-	sess := New(Hosts(map[string][]string{"qq.com:80": []string{"127.0.0.1"}}))
+	sess := New() //Hosts(map[string][]string{"qq.com:80": []string{"127.0.0.1"}}))
 	resp, err := sess.DoRequest(context.Background(),
 		URL("http://qq.com:80"), Path("/234"),
 		//Body(map[string]string{"hello": "world"}),
@@ -155,25 +155,6 @@ func Test_MockServer(t *testing.T) {
 	t.Logf("%#v, %v", resp, err)
 }
 
-// go test -v -test.bench=Benchmark_Request -test.run=Benchmark_Request -benchmem --race
-func Benchmark_Request(b *testing.B) {
-	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.Copy(w, r.Body)
-	}))
-	defer s.Close()
-	sess := New()
-	for i := 0; i < b.N; i++ {
-		resp, err := sess.DoRequest(context.Background(),
-			URL(s.URL),
-			Body(map[string]string{"a": "b"}),
-			Params(map[string]any{"123": "456"}),
-			Cookie(http.Cookie{Name: "cookie_name", Value: "cookie_value"}),
-		)
-		_, _ = resp, err
-	}
-
-}
-
 func Test_Retry(t *testing.T) {
 	var reqCount int32 = 0
 
@@ -184,12 +165,12 @@ func Test_Retry(t *testing.T) {
 		} else {
 			w.WriteHeader(200)
 		}
-		w.Write([]byte(fmt.Sprintf("response: %d", reqNo)))
+		_, _ = w.Write([]byte(fmt.Sprintf("response: %d", reqNo)))
 	}))
 	defer s.Close()
 
 	sess := New()
-	sess.DoRequest(context.Background(), URL(s.URL))
+	_, _ = sess.DoRequest(context.Background(), URL(s.URL))
 }
 
 func Test_Cannel(t *testing.T) {
