@@ -66,7 +66,7 @@ func NewRequestWithContext(ctx context.Context, options Options) (*http.Request,
 	}
 
 	for _, each := range options.RequestEach {
-		if err := each(req); err != nil {
+		if err := each(ctx, req); err != nil {
 			return req, fmt.Errorf("requestEach: %w", err)
 		}
 	}

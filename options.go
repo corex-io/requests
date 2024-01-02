@@ -29,8 +29,8 @@ type Options struct {
 	Logf       func(ctx context.Context, stat Stat)
 	Stream     func(int64, []byte) error
 
-	RequestEach  []func(*http.Request) error
-	ResponseEach []any
+	RequestEach  []func(context.Context, *http.Request) error
+	ResponseEach []func(context.Context, *http.Response) error
 
 	// session used
 	LocalAddr net.Addr
@@ -224,9 +224,15 @@ func Stream(stream func(int64, []byte) error) Option {
 	}
 }
 
-func RequestEach(each ...func(*http.Request) error) Option {
+func RequestEach(each ...func(context.Context, *http.Request) error) Option {
 	return func(o *Options) {
 		o.RequestEach = each
+	}
+}
+
+func ResponseEach(each ...func(context.Context, *http.Response) error) Option {
+	return func(o *Options) {
+		o.ResponseEach = each
 	}
 }
 
@@ -272,5 +278,7 @@ func (opt Options) Copy() Options {
 		options.Header.Add(k, v[0])
 	}
 	options.RequestEach = append(options.RequestEach, opt.RequestEach...)
+	options.ResponseEach = append(options.ResponseEach, opt.ResponseEach...)
+
 	return options
 }

@@ -27,9 +27,9 @@ type Stat struct {
 		StatusCode    int               `json:"StatusCode"`
 		ContentLength int64             `json:"ContentLength"`
 	} `json:"Response"`
-	Err       string `json:"Err"`
-	Exception string `json:"Exception"`
-	Retry     int    `json:"Retry"`
+	Err string `json:"Err"`
+	//Exception string `json:"Exception"`
+	Retry int `json:"Retry"`
 }
 
 func (stat Stat) String() string {

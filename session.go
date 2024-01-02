@@ -174,6 +174,12 @@ func (s *Session) DoRequest(ctx context.Context, opts ...Option) (*Response, err
 
 	defer resp.Response.Body.Close()
 
+	for _, each := range options.ResponseEach {
+		if err := each(ctx, resp.Response); err != nil {
+			return &resp, fmt.Errorf("responseEach: %w", err)
+		}
+	}
+
 	if options.Stream != nil {
 		resp.Response.ContentLength, resp.Err = resp.stream(options.Stream)
 	} else {

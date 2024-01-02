@@ -191,3 +191,30 @@ func Test_Stream(t *testing.T) {
 	t.Logf("%v, err=%v", resp.Stat(), err)
 
 }
+
+func Test_ForEach(t *testing.T) {
+	s := New(RequestEach(func(ctx context.Context, req *http.Request) error {
+		if req.Header.Get("RequestId") == "" {
+			requestId, ok := ctx.Value("RequestId").(string)
+			if !ok {
+				requestId = "mytest"
+			}
+			req.Header.Set("Request-Id", requestId)
+		}
+
+		return nil
+	}), ResponseEach(func(ctx context.Context, resp *http.Response) error {
+		if resp.Header.Get("RequestId") == "" {
+			requestId, ok := ctx.Value("RequestId").(string)
+			if !ok {
+				requestId = "myResponse"
+			}
+			resp.Header.Set("Request-Id", requestId)
+		}
+
+		return nil
+	}))
+	resp, err := s.DoRequest(context.Background(), URL("http://httpbin.org/get"), TraceLv(3, 10024))
+	t.Logf("%v, %v", resp.Stat(), err)
+
+}
